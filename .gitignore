@@ -1,0 +1,16 @@
+# Downloaded datasets, private transcripts, model weights, and run outputs.
+work/
+private/
+transcripts/
+models/
+runs/
+pippa.jsonl
+pippa_*.jsonl
+*.safetensors
+*.gguf
+*.npz
+
+# Local tooling.
+.venv/
+__pycache__/
+.DS_Store

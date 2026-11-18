@@ -1,6 +1,6 @@
 model: models/qwen35-4b-q4
-data: qwen/pilot-data
-adapter_path: runs/qwen-pilot
+data: work/datasets/recent
+adapter_path: runs/pilot-recent
 train: true
 fine_tune_type: lora
 mask_prompt: true

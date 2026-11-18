@@ -1,0 +1,321 @@
+# Storythread continuity adapter
+
+**Research question:** can a small QLoRA adapter improve roleplay continuity by
+training on replies that depend on earlier scenes?
+
+The target experience is a character who is engaging to talk to, remembers what
+happened, and gives the player room to act. The character card guides genre,
+voice, and prose style.
+
+Status: the data, preflight, and scoring tooling is verified on a synthetic
+fixture. **Every experimental result below is pending until measured.**
+
+Run every command from the repository root (this directory) inside a virtualenv.
+
+## 0. Setup
+
+```bash
+python3 -m venv .venv && source .venv/bin/activate
+pip install "mlx-lm==0.32.2" huggingface_hub transformers pyyaml
+python -m unittest discover tests        # fixture end-to-end check, no GPU needed
+python runtime.py setup-model            # freezes models/qwen35-4b-q4 (records revision)
+```
+
+`data.py`, `eval.py` (except `generate`), and the tests use only the standard
+library. `mlx-lm` 0.32.2 is the version this guide was checked against.
+
+## 1. Experiment design
+
+Two training arms share the **same curated PIPPA core** and the same authored
+scenarios. They differ only in which branch of each authored scene pair they
+train on:
+
+| Arm | Authored branch | Reply depends on |
+|---|---|---|
+| `recent` | `branches.recent` | evidence in the last few turns |
+| `earlier` | `branches.earlier` | evidence far back in the history |
+
+Authored examples start at about 25% of each arm (`--authored-share 0.25`), the
+PIPPA core is subsampled deterministically to match, and both arms have equal
+example counts, row order, model revision, rank, adapted blocks, learning rate,
+and update count. Loss is on the final assistant reply only
+(`mask_prompt: true`).
+
+Evaluation compares untuned 4B (`base`), the `recent` adapter, and the
+`earlier` adapter on the same fixed histories, cards, and generation settings.
+Retrieval is out of scope: each prompt contains the evidence turn directly.
+
+## 2. Curate PIPPA
+
+PIPPA contains mature and disturbing content. You decide what is approved.
+
+```bash
+hf download PygmalionAI/PIPPA pippa_deduped.jsonl --repo-type dataset --local-dir work/pippa
+python data.py index work/pippa/pippa_deduped.jsonl work/index.jsonl
+python data.py review work/index.jsonl work/review.jsonl --sample 300
+python data.py show work/index.jsonl <scene_id>        # read a scene by turn number
+```
+
+Indexing is broad by default. `--pattern REGEX` and `--tag fantasy|romance`
+(repeatable) are optional search aids that narrow the index and fill `tags`.
+
+Edit `work/review.jsonl`. For each scene you keep, set `approved: true`, choose
+the window with `start`/`end` (turn indices from `show`; the window must end in
+a user turn then an assistant turn), and replace `system` with a concise
+character card. Approve scenes with:
+
+- coherent exchanges (no broken or repeated turns);
+- responsive characters that answer what the player just did or said;
+- player agency (the character does not decide the player's actions or
+  feelings);
+- earlier details that later turns could plausibly depend on.
+
+`group` defaults to the PIPPA `bot_id`. Give related cards (same character,
+sequels, shared world) the same `group` to keep them in one split.
+
+## 3. Author scene pairs
+
+Write original scenes to `authored/scenes.jsonl` (see the schema below). Each
+scenario has one shared history and two final turns: one reply depends on
+recent evidence, the other on earlier evidence. `earlier` must be farther from
+the reply than `recent`. `evidence` is a quote that must appear in the cited
+turn.
+
+## 4. Export the two datasets
+
+```bash
+python data.py prepare work/pippa/pippa_deduped.jsonl work/review.jsonl \
+  authored/scenes.jsonl work/datasets --valid-share 0.1 --authored-share 0.25
+```
+
+Splits are assigned per linked group: a scenario, its branches, cards with the
+same `group`, cards with the same PIPPA `bot_id`, and identical windows always
+land in the same split. Each source (PIPPA, authored) contributes about
+`--valid-share` of its items to `valid`. `summary.json` lists counts, the actual
+authored share, and any shortage of core examples.
+
+## 5. Tokenizer preflight and the sequence cap
+
+```bash
+python runtime.py check-data --data work/datasets/recent --max-tokens 512 --report-only
+python runtime.py check-data --data work/datasets/earlier --max-tokens 512 --report-only
+```
+
+Reports input, target-reply, and full-example token counts, and (for authored
+rows) evidence distance in turns and in templated tokens, per source and
+branch. It also verifies the final-reply mask aligns with the chat template.
+Rows are flagged when they would lose their target reply (`target_truncated`;
+mlx-lm truncates from the end), lose their evidence (`evidence_truncated`), or
+have a misaligned mask or empty target. Without `--report-only` the command
+exits non-zero if any row is flagged. Evidence offsets are approximate to a few
+template tokens. Fix flagged rows by shortening review windows or authored
+histories.
+
+## 6. Smoke test and memory probes (16 GB Mac)
+
+Smoke test (tiny `smoke-data/`, 512 tokens, 10 updates):
+
+```bash
+mkdir -p runs
+python runtime.py check-data --data smoke-data --max-tokens 512
+python runtime.py train -- --config smoke.yaml
+```
+
+`runtime.py train` runs `mlx_lm.lora` unchanged and also writes
+`<adapter_path>/train_metrics.json` (mean and max step time, peak memory in GB).
+
+Probe real long examples at each candidate cap. Close other apps first:
+
+```bash
+for CAP in 1024 2048; do
+  python runtime.py probe --data work/datasets/recent --target-tokens $CAP \
+    --count 4 --output work/probe-$CAP
+  python runtime.py train -- --config smoke.yaml --data work/probe-$CAP \
+    --max-seq-length $CAP --iters 5 --adapter-path runs/probe-$CAP
+  cat runs/probe-$CAP/train_metrics.json
+done
+```
+
+`probe` picks the longest training examples that fit under the target and
+refuses if none reach 60% of it (author a longer scene instead).
+
+Choose **one cap** for both arms: the largest of 512, 1024, 2048 whose probe
+finishes with comfortable memory headroom, and for which `check-data` reports
+zero flagged rows in both arms at that cap.
+
+## 7. Pilot runs
+
+Identical settings except the data and output directory (`pilot.yaml`: seed 42,
+LoRA rank 8, 4 adapted blocks, learning rate 1e-4, 100 updates):
+
+```bash
+CAP=1024   # the verified cap from step 6
+for ARM in recent earlier; do
+  python runtime.py check-data --data work/datasets/$ARM --max-tokens $CAP
+  python runtime.py train -- --config pilot.yaml --data work/datasets/$ARM \
+    --adapter-path runs/pilot-$ARM --max-seq-length $CAP
+done
+```
+
+Step time and peak memory land in `runs/pilot-<arm>/train_metrics.json`. The
+model revision is in `models/qwen35-4b-q4/source.json`. Both arms see the same
+row order and seed.
+
+## 8. Evaluate
+
+Author held-out scenarios in `eval/dev.jsonl` and `eval/test.jsonl` with
+original characters and histories. Keep the test set frozen: tune on dev only.
+Each scenario has two versions where one earlier event differs, the final user
+prompt is identical, and the expected reply changes.
+
+```bash
+python eval.py validate eval/dev.jsonl eval/test.jsonl   # schema + dev/test disjoint
+mkdir -p work/eval
+python eval.py generate --label base eval/test.jsonl work/eval/base.jsonl
+python eval.py generate --label recent --adapter runs/pilot-recent \
+  eval/test.jsonl work/eval/recent.jsonl
+python eval.py generate --label earlier --adapter runs/pilot-earlier \
+  eval/test.jsonl work/eval/earlier.jsonl
+```
+
+Greedy decoding, same `--max-tokens`, same prompts (checked by prompt hash).
+Output rows record the case-file hash so the frozen test set is verifiable.
+
+**Primary metric: continuity.** Percent of scenarios where the model acts on the
+correct story state in both versions.
+
+```bash
+python eval.py sheet eval/test.jsonl work/eval/sheet.jsonl work/eval/key.jsonl \
+  --outputs work/eval/base.jsonl work/eval/recent.jsonl work/eval/earlier.jsonl
+# Reviewer: in sheet.jsonl set "satisfies": true/false on every reply, judging
+# it against "expected" and "evidence". In-character paraphrases count.
+python eval.py continuity eval/test.jsonl work/eval/sheet.jsonl work/eval/key.jsonl \
+  > work/eval/continuity.json
+```
+
+Replies are shuffled per case and labeled `R1..R3`; the key is separate. The
+report gives, per condition, counts with denominators for both versions
+satisfied, for single versions, and for each evidence-distance bucket
+(`--edges 4,12` turns by default).
+
+**Separate score: engagement.** Blind pairwise, question: "Which character would
+you rather keep chatting with?"
+
+```bash
+python eval.py blind eval/test.jsonl work/eval/base.jsonl work/eval/recent.jsonl \
+  work/eval/blind-base-recent.jsonl work/eval/blind-base-recent-key.jsonl
+# Reviewer: set "winner" to A, B, or tie. Repeat for base/earlier, recent/earlier.
+python eval.py score work/eval/blind-base-recent.jsonl work/eval/blind-base-recent-key.jsonl
+```
+
+## 9. Schemas and outputs
+
+All files are JSONL.
+
+**PIPPA source** (`pippa_deduped.jsonl`): uses `bot_id`, `bot_name`,
+`bot_description`, `bot_greeting`, and `conversation[{message, is_human}]`.
+
+**Index** (`work/index.jsonl`): `scene_id`, `suggested_group`, `tags`, `name`,
+`description`, `bot_id`, `turns[{role, content}]`.
+
+**Review** (`work/review.jsonl`): `scene_id`, `approved` (bool), `group`,
+`start`, `end`, `system`; optional `tags`, `bot_id`.
+
+**Authored scenes** (`authored/scenes.jsonl`):
+
+```json
+{"scenario_id": "salt-river", "group": "tamsin", "system": "Card text.",
+ "history": [{"role": "assistant", "content": "..."}, {"role": "user", "content": "..."}],
+ "branches": {
+   "recent":  {"user": "...", "reply": "...", "evidence_turn": 6, "evidence": "quote"},
+   "earlier": {"user": "...", "reply": "...", "evidence_turn": 1, "evidence": "quote"}}}
+```
+
+`history` alternates roles and ends with an assistant turn. `evidence_turn`
+indexes conversation turns (system card excluded; the branch's own `user` turn
+is `len(history)`). Evidence distance = index of the target reply minus
+`evidence_turn`.
+
+**Eval scenarios** (`eval/dev.jsonl`, `eval/test.jsonl`):
+
+```json
+{"scenario_id": "test-oven", "group": "perrin",
+ "versions": {
+   "a": {"messages": [{"role": "system", "content": "..."}, "...", {"role": "user", "content": "..."}],
+         "expected": "Recommends a loaf without wheat.", "evidence_turn": 2, "evidence": "wheat"},
+   "b": {"messages": ["same system and final user turn; evidence turn differs"],
+         "expected": "...", "evidence_turn": 2, "evidence": "nuts"}}}
+```
+
+`evidence_turn` indexes turns after the system card. Both versions must cite the
+same turn, differ there, and share the system card and final user prompt.
+
+| Output | Location |
+|---|---|
+| Index, review template | `work/index.jsonl`, `work/review.jsonl` |
+| Arm datasets | `work/datasets/{recent,earlier}/{train,valid}.jsonl` |
+| Review manifest (source, group, split, `row`, `branch`, `evidence_turn`, `evidence_distance_turns`, window) | `work/datasets/<arm>/manifest.jsonl` |
+| Export counts, authored share, core hash | `work/datasets/summary.json` |
+| Preflight report | `work/datasets/<arm>/preflight-<cap>.json` |
+| Adapters, step time, peak memory | `runs/pilot-<arm>/` (`train_metrics.json`) |
+| Generations | `work/eval/<label>.jsonl` |
+| Rating sheet and key | `work/eval/sheet.jsonl`, `work/eval/key.jsonl` |
+| Continuity report | `work/eval/continuity.json` |
+| Engagement sheets and keys | `work/eval/blind-*.jsonl` |
+
+`work/`, `runs/`, `models/`, downloaded PIPPA files, `private/`, and
+`transcripts/` are ignored by Git.
+
+## 10. Fixture and verification
+
+`fixtures/` is a synthetic, original dataset: PIPPA-shaped sample, review file,
+four authored scenes, and separate dev and test eval sets. Run it:
+
+```bash
+python -m unittest discover tests
+python data.py prepare fixtures/pippa-sample.jsonl fixtures/review.jsonl \
+  fixtures/authored.jsonl /tmp/fixture-datasets --valid-share 0.25 --seed 3
+python eval.py validate fixtures/eval-dev.jsonl fixtures/eval-test.jsonl
+```
+
+The tests cover export, preflight, sheet generation, and scoring. Model
+generation is replaced by synthetic outputs, and reviewer ratings are scripted.
+
+| Check | Status |
+|---|---|
+| Export: shared core, equal counts, 25% authored, split integrity, manifest evidence/branch | Verified on fixture |
+| Preflight measurement and flags (fake tokenizer in tests; Qwen3.5-4B tokenizer and chat template checked by hand on the fixture export) | Verified |
+| Eval validation, blind sheet, continuity scoring with distance buckets, engagement scoring | Verified on fixture |
+| 512-token smoke run (`runtime.py train -- --config smoke.yaml`) | Needs local Apple Silicon run |
+| 1,024 and 2,048 probes, peak memory on 16 GB | Needs local Apple Silicon run |
+| `runtime.py train` metrics hook (`train_metrics.json`) during real training | Needs local Apple Silicon run |
+| `eval.py generate` with the 4-bit model and adapters | Needs local Apple Silicon run |
+| Pilot runs, continuity, engagement | Pending, not measured |
+
+## 11. Results (pending)
+
+| Condition | Both versions correct | Engagement wins | Step time (s) | Peak mem (GB) |
+|---|---|---|---|---|
+| base | pending | pending | n/a | n/a |
+| recent adapter | pending | pending | pending | pending |
+| earlier adapter | pending | pending | pending | pending |
+
+## 12. Follow-up: SillyTavern retrieval test
+
+Not part of the main evaluation. After the above, load the same characters and
+histories in SillyTavern with its memory/vector retrieval enabled (no evidence
+in the prompt window), and run the same scenarios on base and each adapter.
+Record the retrieval settings, and score with the same continuity sheet.
+
+## Credits
+
+- **REMP** (Yu et al., *REMP: A Structured Event-Probing Benchmark for
+  Long-Horizon Role-Playing Dialogue*, Findings of EMNLP 2026) inspired the
+  event-triggered evaluation design: probe the model after a diagnostic event
+  and compare against a reference. This repository uses a much smaller,
+  independent protocol; its numbers are not comparable to REMP's.
+  [Paper](https://aclanthology.org/2026.findings-emnlp.602/)
+- [PIPPA](https://huggingface.co/datasets/PygmalionAI/PIPPA) (Gosling, Dale,
+  Zheng) supplies the curated roleplay core.
+- The recent-versus-earlier training comparison is Storythread's own experiment,
+  separate from REMP.

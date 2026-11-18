@@ -1,5 +1,5 @@
 model: models/qwen35-4b-q4
-data: qwen/smoke-data
+data: smoke-data
 adapter_path: runs/qwen-smoke
 train: true
 fine_tune_type: lora
