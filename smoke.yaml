@@ -1,0 +1,21 @@
+model: models/qwen35-4b-q4
+data: qwen/smoke-data
+adapter_path: runs/qwen-smoke
+train: true
+fine_tune_type: lora
+mask_prompt: true
+seed: 42
+batch_size: 1
+num_layers: 4
+max_seq_length: 512
+grad_checkpoint: true
+iters: 10
+learning_rate: 0.0001
+steps_per_report: 1
+steps_per_eval: 10
+val_batches: 1
+save_every: 10
+lora_parameters:
+  rank: 8
+  scale: 2.0
+  dropout: 0.0

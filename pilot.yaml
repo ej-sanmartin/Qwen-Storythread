@@ -1,0 +1,21 @@
+model: models/qwen35-4b-q4
+data: qwen/pilot-data
+adapter_path: runs/qwen-pilot
+train: true
+fine_tune_type: lora
+mask_prompt: true
+seed: 42
+batch_size: 1
+num_layers: 4
+max_seq_length: 512
+grad_checkpoint: true
+iters: 100
+learning_rate: 0.0001
+steps_per_report: 5
+steps_per_eval: 25
+val_batches: 8
+save_every: 25
+lora_parameters:
+  rank: 8
+  scale: 2.0
+  dropout: 0.0
