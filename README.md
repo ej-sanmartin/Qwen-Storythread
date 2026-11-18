@@ -7,6 +7,70 @@ The target experience is a character who is engaging to talk to, remembers what
 happened, and gives the player room to act. The character card guides genre,
 voice, and prose style.
 
+## Training picture
+
+Both arms run the same QLoRA recipe on a frozen 4-bit Qwen3.5-4B
+(`mlx-community/Qwen3.5-4B-4bit`, 4-bit affine, group size 64). `mlx_lm.lora`
+trains low-rank adapters on the last four of the 32 blocks. The arms differ
+only in which authored reply they supervise.
+
+```mermaid
+flowchart TB
+  core["Shared PIPPA core"] --> recent["recent set"]
+  core --> earlier["earlier set"]
+  recent --> rtrain["QLoRA, seed 42"]
+  earlier --> etrain["QLoRA, seed 42"]
+  rtrain --> radapt["runs/pilot-recent"]
+  etrain --> eadapt["runs/pilot-earlier"]
+
+  subgraph step [One update, either arm]
+    direction TB
+    prompt["Card, history, and user turn. Loss masked."]
+    reply["Assistant reply. Cross-entropy."]
+    prompt --> stack
+    reply --> loss["Next-token loss on the reply"]
+    subgraph stack [Frozen 4-bit Qwen3.5-4B]
+      direction TB
+      emb["Tied embeddings"]
+      early["Blocks 1-28. No adapter."]
+      mid["Blocks 29-31. Gated DeltaNet plus MLP."]
+      last["Block 32. Full attention plus MLP."]
+      head["Tied output head"]
+      emb --> early --> mid --> last --> head
+    end
+    head --> loss
+    loss --> adam["Adam, lr 1e-4, batch 1, 100 steps"]
+  end
+
+  rtrain -.-> step
+  etrain -.-> step
+```
+
+On every linear inside blocks 29–32 the forward pass is
+
+`y = W4(x) + 2 · (x A) B`
+
+with `A` shaped `in × 8`, `B` shaped `8 × out`, and `B` initialized at zero.
+Dropout is 0. `W4` stays quantized and frozen. Trainable weights are `A` and
+`B` only.
+
+```mermaid
+flowchart LR
+  x["x"] --> base["W4, frozen 4-bit"]
+  x --> a["A, in × 8"]
+  a --> b["B, 8 × out"]
+  b --> scaled["× 2"]
+  base --> y["y"]
+  scaled --> y
+```
+
+Blocks 29–31 adapt the Gated DeltaNet linears `in_proj_qkv`, `in_proj_z`,
+`in_proj_a`, `in_proj_b`, and `out_proj`, plus the MLP `gate_proj`, `up_proj`,
+and `down_proj`. Block 32 adapts `q_proj`, `k_proj`, `v_proj`, and `o_proj`,
+plus the same MLP. `q_proj` is twice a normal query width because it also
+emits the attention output gate. The depthwise `conv1d`, RMSNorms, `A_log`,
+`dt_bias`, embeddings, and the tied head stay frozen.
+
 Status: the data, preflight, and scoring tooling is verified on a synthetic
 fixture. **Every experimental result below is pending until measured.**
 
