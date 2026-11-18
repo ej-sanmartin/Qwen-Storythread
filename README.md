@@ -33,27 +33,19 @@ flowchart LR
 One training update, identical for both arms:
 
 ```mermaid
-flowchart TB
+flowchart LR
   classDef data fill:#fef3c7,stroke:#d97706,color:#1f2937
   classDef frozen fill:#dbeafe,stroke:#3b82f6,color:#1f2937
   classDef train fill:#dcfce7,stroke:#16a34a,color:#1f2937
   classDef step fill:#f3f4f6,stroke:#6b7280,color:#1f2937
   classDef loss fill:#fee2e2,stroke:#dc2626,color:#1f2937
 
-  prompt["Card + history + user turn<br/>(masked: no loss)"]:::data
-  reply["Assistant reply<br/>(supervised)"]:::data
-  prompt --> emb
-  reply --> emb
-
-  emb["Tied embeddings<br/>frozen"]:::frozen
+  data["Card + history + user turn<br/>(masked)<br/>Assistant reply<br/>(supervised)"]:::data
   low["Blocks 1-28<br/>frozen"]:::frozen
-  mid["Blocks 29-31<br/>Gated DeltaNet + MLP<br/>frozen base + LoRA r=8"]:::train
-  top["Block 32<br/>Full attention + MLP<br/>frozen base + LoRA r=8"]:::train
-  head["Tied output head<br/>frozen"]:::frozen
-  emb --> low --> mid --> top --> head
-
-  head --> loss{{"Cross-entropy on reply tokens"}}:::loss
-  loss --> adam["Adam<br/>lr 1e-4, batch 1, 100 updates<br/>updates only the LoRA weights"]:::step
+  top["Blocks 29-32<br/>frozen base<br/>+ LoRA r=8"]:::train
+  loss{{"Cross-entropy<br/>on reply"}}:::loss
+  adam["Adam, lr 1e-4<br/>updates LoRA only"]:::step
+  data --> low --> top --> loss --> adam
 ```
 
 On every linear inside blocks 29–32 the forward pass is
