@@ -14,36 +14,46 @@ Both arms run the same QLoRA recipe on a frozen 4-bit Qwen3.5-4B
 trains low-rank adapters on the last four of the 32 blocks. The arms differ
 only in which authored reply they supervise.
 
+**Legend:** amber is data, blue is frozen weights, green is trainable LoRA
+weights, red is the loss, indigo is a saved adapter, gray is a process step.
+
+```mermaid
+flowchart LR
+  classDef data fill:#fef3c7,stroke:#d97706,color:#1f2937
+  classDef train fill:#f3f4f6,stroke:#6b7280,color:#1f2937
+  classDef out fill:#e0e7ff,stroke:#6366f1,color:#1f2937
+
+  core(["Shared PIPPA core<br/>+ ~25% authored"]):::data
+  core --> recent["recent arm<br/>evidence in last turns"]:::data
+  core --> earlier["earlier arm<br/>evidence far back"]:::data
+  recent --> rtrain["QLoRA<br/>seed 42"]:::train --> radapt(["runs/pilot-recent"]):::out
+  earlier --> etrain["QLoRA<br/>seed 42"]:::train --> eadapt(["runs/pilot-earlier"]):::out
+```
+
+One training update, identical for both arms:
+
 ```mermaid
 flowchart TB
-  core["Shared PIPPA core"] --> recent["recent set"]
-  core --> earlier["earlier set"]
-  recent --> rtrain["QLoRA, seed 42"]
-  earlier --> etrain["QLoRA, seed 42"]
-  rtrain --> radapt["runs/pilot-recent"]
-  etrain --> eadapt["runs/pilot-earlier"]
+  classDef data fill:#fef3c7,stroke:#d97706,color:#1f2937
+  classDef frozen fill:#dbeafe,stroke:#3b82f6,color:#1f2937
+  classDef train fill:#dcfce7,stroke:#16a34a,color:#1f2937
+  classDef step fill:#f3f4f6,stroke:#6b7280,color:#1f2937
+  classDef loss fill:#fee2e2,stroke:#dc2626,color:#1f2937
 
-  subgraph step [One update, either arm]
-    direction TB
-    prompt["Card, history, and user turn. Loss masked."]
-    reply["Assistant reply. Cross-entropy."]
-    prompt --> stack
-    reply --> loss["Next-token loss on the reply"]
-    subgraph stack [Frozen 4-bit Qwen3.5-4B]
-      direction TB
-      emb["Tied embeddings"]
-      early["Blocks 1-28. No adapter."]
-      mid["Blocks 29-31. Gated DeltaNet plus MLP."]
-      last["Block 32. Full attention plus MLP."]
-      head["Tied output head"]
-      emb --> early --> mid --> last --> head
-    end
-    head --> loss
-    loss --> adam["Adam, lr 1e-4, batch 1, 100 steps"]
-  end
+  prompt["Card + history + user turn<br/>(masked: no loss)"]:::data
+  reply["Assistant reply<br/>(supervised)"]:::data
+  prompt --> emb
+  reply --> emb
 
-  rtrain -.-> step
-  etrain -.-> step
+  emb["Tied embeddings<br/>frozen"]:::frozen
+  low["Blocks 1-28<br/>frozen"]:::frozen
+  mid["Blocks 29-31<br/>Gated DeltaNet + MLP<br/>frozen base + LoRA r=8"]:::train
+  top["Block 32<br/>Full attention + MLP<br/>frozen base + LoRA r=8"]:::train
+  head["Tied output head<br/>frozen"]:::frozen
+  emb --> low --> mid --> top --> head
+
+  head --> loss{{"Cross-entropy on reply tokens"}}:::loss
+  loss --> adam["Adam<br/>lr 1e-4, batch 1, 100 updates<br/>updates only the LoRA weights"]:::step
 ```
 
 On every linear inside blocks 29–32 the forward pass is
@@ -56,12 +66,18 @@ Dropout is 0. `W4` stays quantized and frozen. Trainable weights are `A` and
 
 ```mermaid
 flowchart LR
-  x["x"] --> base["W4, frozen 4-bit"]
-  x --> a["A, in × 8"]
-  a --> b["B, 8 × out"]
-  b --> scaled["× 2"]
-  base --> y["y"]
-  scaled --> y
+  classDef frozen fill:#dbeafe,stroke:#3b82f6,color:#1f2937
+  classDef train fill:#dcfce7,stroke:#16a34a,color:#1f2937
+  classDef io fill:#f3f4f6,stroke:#6b7280,color:#1f2937
+
+  x(["x"]):::io
+  x --> base["W4<br/>frozen, 4-bit"]:::frozen
+  x --> a["A<br/>in × 8"]:::train
+  a --> b["B<br/>8 × out"]:::train
+  b --> scaled["× 2"]:::train
+  base --> sum(("+")):::io
+  scaled --> sum
+  sum --> y(["y"]):::io
 ```
 
 Blocks 29–31 adapt the Gated DeltaNet linears `in_proj_qkv`, `in_proj_z`,
