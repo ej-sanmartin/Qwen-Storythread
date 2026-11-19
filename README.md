@@ -131,22 +131,29 @@ python data.py show work/index.jsonl <scene_id>        # read a scene by turn nu
 Indexing is broad by default. `--pattern REGEX` and `--tag fantasy|romance`
 (repeatable) are optional search aids that narrow the index and fill `tags`.
 
-### Optional: local judge suggestions
+### Optional: local judge triage
 
-`judge.py` asks a local Ollama model to suggest a range and 0-2 scores for each
-review row. It only writes `work/review_suggestions.jsonl` and
-`work/review_suggestions.csv`. It never touches `work/review.jsonl`: you still
-set `approved`, `start`/`end`, and `system` by hand.
+`judge.py` triages each review row with a local Ollama model. It cuts the log
+into a BEGINNING and an ENDING excerpt (about 7,000 characters each) and asks
+for a memory check, a mechanics/anti-slop check, and a lorebook summary of the
+BEGINNING in one JSON reply. A log is `passed` only if `memory_score >= 4`,
+`quality_score >= 4`, and `god_moding`, `ooc_or_refusal` and `repetitive_slop`
+are all false; otherwise it is `rejected` with `reject_reasons`. It only writes
+`work/review_triage.jsonl` and `work/review_triage.csv`. It never touches
+`work/review.jsonl`: you still set `approved`, `start`/`end`, and `system` by
+hand. It does not suggest ranges. Read the limitations at the top of
+`judge.py`: a small model's scores are noisy and unvalidated, so check
+`reject_reasons` and `contradictions` before discarding a scene.
 
 ```bash
 ollama pull qwen3.5:4b   # once; the Ollama server must be running
 python judge.py --limit 20
 ```
 
-That judges the next 20 rows of `work/review.jsonl` (about 15 s per scene on
+That judges the next 20 rows of `work/review.jsonl` (about 12 s per scene on
 Apple Silicon). Run the same command again for the next batch: scenes already
-in `work/review_suggestions.jsonl` are skipped, so no copying or offsets are
-needed. A scene counts as judged once it has a `proposed` or `skipped` row from
+in `work/review_triage.jsonl` are skipped, so no copying or offsets are
+needed. A scene counts as judged once it has a `passed` or `rejected` row from
 the same `--model`; `failed` rows are judged again. Every row records its
 `judge_model`, and a different `--model` judges the scene again without
 replacing the first judge's row, so the CSV holds one row per scene and model
@@ -163,9 +170,12 @@ supported.
 Options: `--model` (default `qwen3.5:4b`), `--endpoint`
 (`http://127.0.0.1:11434`), `--max-tokens` (training cap used for flagging,
 default 1024), `--limit` (next unjudged rows, default 20, `0` = all), `--num-ctx`
-(judge context, default 8192), and `--output`/`--csv`. Token counts use the
-`system` card as of the run that judged the scene; to re-count after editing a
-card, delete that scene's row from the JSONL and rerun.
+(judge context, default 8192; 4096 truncates the prompt), `--retries` (extra
+tries when the model's JSON is invalid, default 2), and `--output`/`--csv`.
+The judge runs at temperature 0.1 and never sees the `system` card. The
+`lorebook_summary` is saved in both files. `tokens` counts the window already
+in the review row with its `system` card as of the judging run; to re-count
+after editing a card, delete that scene's row from the JSONL and rerun.
 
 Each request sends one card and its turns as JSON-escaped data, with a system
 prompt that tells the model to ignore instructions inside them. Long scenes show
@@ -387,7 +397,7 @@ same turn, differ there, and share the system card and final user prompt.
 | Output | Location |
 |---|---|
 | Index, review template | `work/index.jsonl`, `work/review.jsonl` |
-| Judge suggestions (advisory) and sortable CSV | `work/review_suggestions.{jsonl,csv}` |
+| Judge triage (advisory) and sortable CSV | `work/review_triage.{jsonl,csv}` |
 | Arm datasets | `work/datasets/{recent,earlier}/{train,valid}.jsonl` |
 | Review manifest (source, group, split, `row`, `branch`, `evidence_turn`, `evidence_distance_turns`, window) | `work/datasets/<arm>/manifest.jsonl` |
 | Export counts, authored share, core hash | `work/datasets/summary.json` |
