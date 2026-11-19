@@ -5,7 +5,6 @@ suggestions only. Approvals and final ranges stay in review.jsonl, by hand.
 """
 import argparse
 import csv
-from itertools import islice
 import json
 from pathlib import Path
 import sys
@@ -217,8 +216,8 @@ def rationale(result):
 
 
 def write_csv(path, results):
-    """Writes the sortable summary of all results."""
-    with Path(path).open("x", encoding="utf-8", newline="") as file:
+    """Rebuilds the sortable summary from the latest row per scene."""
+    with Path(path).open("w", encoding="utf-8", newline="") as file:
         writer = csv.DictWriter(file, CSV_FIELDS)
         writer.writeheader()
         for result in results:
@@ -230,14 +229,20 @@ def write_csv(path, results):
             writer.writerow({k: cell(line.get(k)) for k in CSV_FIELDS})
 
 
-def load_scenes(args):
-    """Returns (limited review rows, {scene_id: scene}) joined by scene_id."""
-    review = list(islice(rows(args.review), args.limit or None))
-    wanted = {row["scene_id"]: row for row in review}
-    if len(wanted) != len(review):
+def load_scenes(args, done):
+    """Joins the next review rows to the index by scene_id.
+
+    Args: done, scene_ids to skip because they were already judged.
+    Returns: (up to --limit pending review rows, {scene_id: scene}).
+    """
+    review = list(rows(args.review))
+    if len({row["scene_id"] for row in review}) != len(review):
         raise SystemExit("Duplicate scene_id in the review file.")
+    review = [r for r in review if r["scene_id"] not in done]
+    review = review[:args.limit or None]
+    wanted = {row["scene_id"] for row in review}
     scenes = {}
-    for scene in rows(args.index):
+    for scene in rows(args.index) if wanted else ():
         if scene["scene_id"] in wanted:
             scenes[scene["scene_id"]] = scene
             if len(scenes) == len(wanted):
@@ -250,18 +255,26 @@ def load_scenes(args):
 
 
 def run(args, tokenizer):
-    """Judges the limited review rows; writes the JSONL and CSV outputs.
+    """Judges the next unjudged review rows into the JSONL and the CSV.
 
-    Returns: the list of result rows. Failed calls are recorded, not raised.
+    The JSONL is appended to; the CSV is rebuilt from it. A scene counts as
+    judged once the output holds a proposed or skipped row from the same
+    --model. Failed rows and rows from another model are judged again, and
+    the latest row per scene wins in the CSV.
+    Returns: the new result rows. Failed calls are recorded, not raised.
     """
     if not args.endpoint.startswith(("http://", "https://")):
         raise SystemExit("--endpoint must start with http:// or https://")
-    for path in (args.output, args.csv):
-        if Path(path).exists():
-            raise SystemExit(f"{path} exists. Move it or pick a new path.")
-    review, scenes = load_scenes(args)
+    latest = {}
+    if Path(args.output).exists():
+        latest = {row["scene_id"]: row for row in rows(args.output)}
+    done = {sid for sid, row in latest.items()
+            if row["status"] != "failed" and row["judge_model"] == args.model}
+    review, scenes = load_scenes(args, done)
+    print(f"{len(done)} scene(s) already judged; judging {len(review)} more.",
+          file=sys.stderr)
     results = []
-    with Path(args.output).open("x", encoding="utf-8") as file:
+    with Path(args.output).open("a", encoding="utf-8") as file:
         try:
             for number, row in enumerate(review, 1):
                 scene = scenes[row["scene_id"]]
@@ -270,6 +283,7 @@ def run(args, tokenizer):
                           **evaluate(args, tokenizer, scene,
                                      clean(row.get("system")))}
                 results.append(result)
+                latest[result["scene_id"]] = result
                 file.write(json.dumps(result, ensure_ascii=False) + "\n")
                 file.flush()
                 print(f"[{number}/{len(review)}] {row['scene_id'][:8]} "
@@ -277,7 +291,7 @@ def run(args, tokenizer):
                       f"tokens={result.get('tokens')} {result['flags']}",
                       file=sys.stderr)
         finally:
-            write_csv(args.csv, results)
+            write_csv(args.csv, list(latest.values()))
     return results
 
 
@@ -293,7 +307,7 @@ def parse_args(argv=None):
     parser.add_argument("--max-tokens", type=int, default=1024,
                         help="training token cap used to flag long examples")
     parser.add_argument("--limit", type=int, default=20,
-                        help="review rows to judge from the top; 0 = all")
+                        help="next unjudged review rows to judge; 0 = all")
     parser.add_argument("--num-ctx", type=int, default=8192,
                         help="Ollama context window for the judge")
     parser.add_argument("--tokenizer", default=runtime.DEFAULT_MODEL,

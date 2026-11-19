@@ -214,11 +214,63 @@ class JudgeTest(unittest.TestCase):
         self.assertIn("not in the index", str(caught.exception))
         self.assertEqual(self.server.requests, [])
 
-    def test_existing_outputs_are_not_overwritten(self):
-        self.out.write_text("keep\n")
-        with self.assertRaises(SystemExit):
-            self.judge("--limit", "1")
-        self.assertEqual(self.out.read_text(), "keep\n")
+    def names(self):
+        """Returns the character names the fake judge was asked about."""
+        return [next(n for n in REPLIES if n in p["messages"][1]["content"])
+                for _, p in self.server.requests]
+
+    def csv_names(self):
+        with self.table.open(encoding="utf-8", newline="") as file:
+            return [r["name"] for r in csv.DictReader(file)]
+
+    def test_rerun_judges_the_next_batch_and_skips_judged(self):
+        first = self.judge("--limit", "3")
+        self.server.requests.clear()
+        second = self.judge("--limit", "3")
+        self.assertEqual(self.names(), ["Ysolt", "Pell", "Hobb"])
+        self.assertEqual([r["name"] for r in first],
+                         ["Wick", "Sorrel", "Dunmere"])
+        self.assertEqual([r["name"] for r in second],
+                         ["Ysolt", "Pell", "Hobb"])
+        self.assertEqual(len(list(rows(self.out))), 6)
+        self.assertEqual(self.csv_names(), ["Wick", "Sorrel", "Dunmere",
+                                            "Ysolt", "Pell", "Hobb"])
+
+    def test_failed_rows_are_retried_and_latest_wins(self):
+        self.judge("--limit", "8")
+        self.server.requests.clear()
+        saved = REPLIES["Pell"], REPLIES["Linnet"]
+        REPLIES["Pell"], REPLIES["Linnet"] = suggestion(5, 7), suggestion(5, 7)
+        try:
+            retried = self.judge("--limit", "2")
+        finally:
+            REPLIES["Pell"], REPLIES["Linnet"] = saved
+        self.assertEqual(self.names(), ["Pell", "Linnet"])
+        self.assertEqual([r["status"] for r in retried], ["proposed"] * 2)
+        self.assertEqual(len(list(rows(self.out))), 10)
+        with self.table.open(encoding="utf-8", newline="") as file:
+            table = {r["name"]: r for r in csv.DictReader(file)}
+        self.assertEqual(len(table), 8)
+        self.assertEqual(table["Pell"]["status"], "proposed")
+
+    def test_a_different_model_judges_again(self):
+        self.judge("--limit", "1")
+        self.server.requests.clear()
+        self.judge("--limit", "1", "--model", "other:1b")
+        self.assertEqual(self.names(), ["Wick"])
+        self.assertEqual(self.server.requests[0][1]["model"], "other:1b")
+        with self.table.open(encoding="utf-8", newline="") as file:
+            self.assertEqual([r["judge_model"] for r in csv.DictReader(file)],
+                             ["other:1b"])
+
+    def test_nothing_left_to_judge_makes_no_calls(self):
+        review = self.tmp / "three-review.jsonl"
+        write_rows(review, list(rows(self.review))[:3])
+        self.judge("--limit", "0", review=review)
+        self.server.requests.clear()
+        self.assertEqual(self.judge("--limit", "5", review=review), [])
+        self.assertEqual(self.server.requests, [])
+        self.assertEqual(self.csv_names(), ["Wick", "Sorrel", "Dunmere"])
 
     def test_non_http_endpoint_is_rejected(self):
         args = judge.parse_args(["--endpoint", "file:///etc/passwd"])
