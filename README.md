@@ -93,8 +93,9 @@ python -m unittest discover tests        # fixture end-to-end check, no GPU need
 python runtime.py setup-model            # freezes models/qwen35-4b-q4 (records revision)
 ```
 
-`data.py`, `eval.py` (except `generate`), and the tests use only the standard
-library. `mlx-lm` 0.32.2 is the version this guide was checked against.
+`data.py`, `review_ui.py`, `eval.py` (except `generate`), and the tests use
+only the standard library. `mlx-lm` 0.32.2 is the version this guide was
+checked against.
 
 ## 1. Experiment design
 
@@ -214,10 +215,36 @@ rough ordering: a 4B judge gives similar totals to most scenes, so read the
 also skip mature scenes on its own content policy, which the rubric does not ask
 for; check `skip_reason` before trusting a skip.
 
-Edit `work/review.jsonl`. For each scene you keep, set `approved: true`, choose
-the window with `start`/`end` (turn indices from `show`; the window must end in
-a user turn then an assistant turn), and replace `system` with a concise
-character card. Approve scenes with:
+### Local review UI
+
+`review_ui.py` serves one page for these decisions, on localhost:
+
+```bash
+python review_ui.py
+```
+
+Open http://127.0.0.1:8765/. Paths default to `work/review.jsonl`,
+`work/index.jsonl`, and `work/review_suggestions.jsonl`. `--port` changes
+8765.
+
+The queue opens on pending rows. Click a column heading to sort. Names come
+from the index. When the suggestions file has that scene, the row shows the
+latest scored total and its suggested `start`/`end`.
+
+Click a scene id for the numbered chat. Edit `system`, `start`, and `end`
+(`end` is exclusive). Turns in the window are highlighted, and the window's
+last assistant turn is labeled as the final reply. Then use **Approve and
+next**, **Skip and next**, or **Return to pending**.
+
+`review_status` is `pending`, `skipped`, or `approved`. The `approved`
+boolean stays, and the page sets it to true only for `approved`. A row with
+no `review_status` shows as Approved when `approved` is true and Pending
+otherwise. Approve refuses a window that is out of bounds or does not end
+with a user turn followed by an assistant reply. Each action replaces
+`work/review.jsonl` atomically and keeps every other row and field.
+`data.py prepare` still keeps a scene only when `approved` is true.
+
+Approve scenes with:
 
 - coherent exchanges (no broken or repeated turns);
 - responsive characters that answer what the player just did or said;
@@ -374,7 +401,9 @@ All files are JSONL.
 `description`, `bot_id`, `turns[{role, content}]`.
 
 **Review** (`work/review.jsonl`): `scene_id`, `approved` (bool), `group`,
-`start`, `end`, `system`; optional `tags`, `bot_id`.
+`start`, `end`, `system`; optional `tags`, `bot_id`, and `review_status`
+(`pending`, `skipped`, or `approved`). The review page sets `approved` to
+true only when `review_status` is `approved`.
 
 **Authored scenes** (`authored/scenes.jsonl`):
 
@@ -434,12 +463,14 @@ python data.py prepare fixtures/pippa-sample.jsonl fixtures/review.jsonl \
 python eval.py validate fixtures/eval-dev.jsonl fixtures/eval-test.jsonl
 ```
 
-The tests cover export, preflight, sheet generation, and scoring. Model
-generation is replaced by synthetic outputs, and reviewer ratings are scripted.
+The tests cover export, preflight, sheet generation, scoring, and the local
+review page. Model generation is replaced by synthetic outputs, and reviewer
+ratings are scripted.
 
 | Check | Status |
 |---|---|
 | Export: shared core, equal counts, 25% authored, split integrity, manifest evidence/branch | Verified on fixture |
+| Review UI: decision survives reload; prepare still reads `approved` | Verified on fixture |
 | Preflight measurement and flags (fake tokenizer in tests; Qwen3.5-4B tokenizer and chat template checked by hand on the fixture export) | Verified |
 | Eval validation, blind sheet, continuity scoring with distance buckets, engagement scoring | Verified on fixture |
 | 512-token smoke run (`runtime.py train -- --config smoke.yaml`) | Needs local Apple Silicon run |

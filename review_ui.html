@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Storythread review</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  html, body { background: #fff; color: #1f2937; }
+  body {
+    margin: 0; height: 100vh; display: flex; flex-direction: column;
+    font: 15px/1.45 system-ui, sans-serif;
+  }
+  h1 { margin: 0; font-size: 1rem; }
+  .top {
+    padding: 0.6rem 0.9rem; border-bottom: 1px solid #e5e7eb;
+    background: #fff;
+  }
+  .panes { flex: 1; display: flex; min-height: 0; }
+  aside {
+    width: 34rem; max-width: 46%; display: flex; flex-direction: column;
+    border-right: 1px solid #e5e7eb; background: #fff;
+  }
+  .tools {
+    display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap;
+    padding: 0.6rem 0.7rem; border-bottom: 1px solid #e5e7eb;
+  }
+  .tools input { flex: 1; min-width: 8rem; }
+  #count { margin: 0; color: #4b5563; }
+  .queue-scroll { overflow: auto; flex: 1; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 0.35rem 0.45rem; vertical-align: top; }
+  th { position: sticky; top: 0; background: #fff; }
+  th button {
+    font: inherit; font-weight: 650; background: none; border: 0;
+    padding: 0; cursor: pointer;
+  }
+  tr { cursor: pointer; }
+  tr.selected { background: #e0e7ff; }
+  td.name {
+    max-width: 9rem; overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  button.id {
+    font: 13px ui-monospace, monospace; background: none; border: 0;
+    padding: 0; color: #3730a3; cursor: pointer;
+  }
+  .status.pending { color: #92400e; }
+  .status.approved { color: #166534; }
+  .status.skipped { color: #4b5563; }
+  main {
+    flex: 1; min-width: 0; min-height: 0; display: flex;
+    flex-direction: column; padding: 0.9rem 1.1rem 0.6rem; background: #fff;
+  }
+  #editor {
+    flex: 1; min-height: 0; display: flex; flex-direction: column;
+  }
+  textarea { width: 100%; min-height: 5rem; max-height: 8rem; }
+  .read { overflow: auto; flex: 1; min-height: 0; padding-bottom: 1.5rem; }
+  #scene-id {
+    font: 12px ui-monospace, monospace; word-break: break-all; color: #4b5563;
+  }
+  label { display: block; margin: 0.7rem 0 0.25rem; font-weight: 650; }
+  textarea, input, select { font: inherit; }
+  .window { display: flex; gap: 1rem; align-items: end; flex-wrap: wrap; }
+  .window label { margin: 0; }
+  input[type="text"] { width: 5rem; }
+  .hint { font-weight: 400; color: #4b5563; }
+  .actions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin: 0.8rem 0; }
+  button.action {
+    font: inherit; padding: 0.4rem 0.7rem; cursor: pointer;
+  }
+  #note { min-height: 1.2rem; margin: 0 0 0.6rem; }
+  #note.bad { color: #991b1b; }
+  #note.ok { color: #166534; }
+  .suggestion {
+    border-top: 1px solid #e5e7eb; padding: 0.5rem 0; margin: 0;
+  }
+  .suggestion h3 { margin: 0 0 0.3rem; font-size: 0.95rem; }
+  .suggestion p { margin: 0.2rem 0; }
+  article.turn { padding: 0.45rem 0.6rem; margin: 0.35rem 0; }
+  article.turn header { font-weight: 650; }
+  article.turn p { margin: 0.25rem 0 0; white-space: pre-wrap; }
+  article.in { background: #fef3c7; }
+  article.final { box-shadow: inset 4px 0 0 #d97706; }
+  .badge { font-size: 0.75rem; margin-left: 0.4rem; }
+  @media (max-width: 800px) {
+    body { height: auto; min-height: 100vh; }
+    .panes { display: block; }
+    aside { width: auto; max-width: none; max-height: 22rem; }
+    main, #editor { display: block; height: auto; overflow: visible; }
+    .read { overflow: visible; }
+  }
+</style>
+</head>
+<body>
+<header class="top"><h1>Storythread review</h1></header>
+<div class="panes">
+  <aside>
+    <div class="tools">
+      <label>Show
+        <select id="filter">
+          <option value="pending" selected>Pending</option>
+          <option value="approved">Approved</option>
+          <option value="skipped">Skipped</option>
+          <option value="all">All</option>
+        </select>
+      </label>
+      <input id="query" type="search" placeholder="Name or scene id">
+      <p id="count"></p>
+    </div>
+    <div class="queue-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th><button type="button" data-sort="scene_id">Scene</button></th>
+            <th><button type="button" data-sort="name">Character</button></th>
+            <th><button type="button" data-sort="status">Status</button></th>
+            <th><button type="button" data-sort="score">Score</button></th>
+            <th><button type="button" data-sort="range">Range</button></th>
+          </tr>
+        </thead>
+        <tbody id="queue"></tbody>
+      </table>
+    </div>
+  </aside>
+  <main>
+    <p id="empty">Select a scene.</p>
+    <section id="editor" hidden>
+      <h2 id="name"></h2>
+      <p>
+        <span id="status" class="status"></span>
+        <span id="group" class="hint"></span>
+      </p>
+      <p id="scene-id"></p>
+      <label for="system">Character card</label>
+      <textarea id="system"></textarea>
+      <div class="window">
+        <label>Start
+          <input id="start" type="text" inputmode="numeric" autocomplete="off">
+        </label>
+        <label>End
+          <input id="end" type="text" inputmode="numeric" autocomplete="off">
+          <span class="hint">exclusive</span>
+        </label>
+        <span id="length" class="hint"></span>
+      </div>
+      <p id="window-note" class="hint"></p>
+      <div class="actions">
+        <button type="button" class="action" id="approve">
+          Approve and next
+        </button>
+        <button type="button" class="action" id="skip">Skip and next</button>
+        <button type="button" class="action" id="pending">
+          Return to pending
+        </button>
+      </div>
+      <p id="note"></p>
+      <div class="read">
+        <div id="suggestions"></div>
+        <div id="log"></div>
+      </div>
+    </section>
+  </main>
+</div>
+<script>
+const $ = (id) => document.getElementById(id);
+let queue = [];
+let scene = null;
+let selected = null;
+let sortKey = "order";
+let sortAsc = true;
+let loadToken = 0;
+
+function label(status) {
+  return status ? status.charAt(0).toUpperCase() + status.slice(1) : "";
+}
+
+function parseIntField(value) {
+  if (!/^-?\d+$/.test(String(value).trim())) return null;
+  return Number(value);
+}
+
+function setNote(text, kind) {
+  const note = $("note");
+  note.textContent = text || "";
+  note.className = kind || "";
+}
+
+function setBusy(busy) {
+  ["approve", "skip", "pending"].forEach((id) => { $(id).disabled = busy; });
+}
+
+async function readJson(response) {
+  let payload = {};
+  try {
+    payload = await response.json();
+  } catch (error) {
+    throw new Error("The reviewer returned an unreadable response.");
+  }
+  if (!response.ok) throw new Error(payload.error || "Request failed.");
+  return payload;
+}
+
+function field(row, key) {
+  if (key === "score") return row.score;
+  if (key === "range") {
+    if (!Number.isInteger(row.suggested_start) ||
+        !Number.isInteger(row.suggested_end)) return null;
+    return row.suggested_start;
+  }
+  if (key === "scene_id") return row.scene_id;
+  if (key === "name") return row.name || "";
+  if (key === "status") return row.status || "";
+  return row.order;
+}
+
+function compare(a, b) {
+  if (sortKey === "order") return a.order - b.order;
+  const av = field(a, sortKey);
+  const bv = field(b, sortKey);
+  const aMissing = av == null || av === "";
+  const bMissing = bv == null || bv === "";
+  if (aMissing || bMissing) {
+    if (aMissing && bMissing) return a.order - b.order;
+    return aMissing ? 1 : -1;
+  }
+  let diff = 0;
+  if (typeof av === "number" && typeof bv === "number") {
+    diff = av - bv;
+    if (sortKey === "range") diff = diff || a.suggested_end - b.suggested_end;
+  } else {
+    diff = String(av).localeCompare(String(bv));
+  }
+  if (!sortAsc) diff = -diff;
+  return diff || a.order - b.order;
+}
+
+function visible() {
+  const status = $("filter").value;
+  const query = $("query").value.trim().toLowerCase();
+  return queue.filter((row) => {
+    if (status !== "all" && row.status !== status) return false;
+    if (!query) return true;
+    const name = (row.name || "").toLowerCase();
+    return name.includes(query) || row.scene_id.toLowerCase().includes(query);
+  }).slice().sort(compare);
+}
+
+function renderQueue() {
+  document.querySelectorAll("th button").forEach((button) => {
+    let text = button.dataset.label;
+    if (button.dataset.sort === sortKey) {
+      text += sortAsc ? " \u2191" : " \u2193";
+    }
+    button.textContent = text;
+  });
+  const rows = visible();
+  $("count").textContent = rows.length + " shown";
+  const body = $("queue");
+  body.replaceChildren();
+  rows.forEach((row) => {
+    const tr = document.createElement("tr");
+    tr.dataset.id = row.scene_id;
+    if (row.scene_id === selected) tr.classList.add("selected");
+    const idCell = document.createElement("td");
+    const idButton = document.createElement("button");
+    idButton.type = "button";
+    idButton.className = "id";
+    idButton.textContent = row.scene_id.slice(0, 8);
+    idButton.title = row.scene_id;
+    idCell.append(idButton);
+    const name = document.createElement("td");
+    name.className = "name";
+    name.textContent = row.name || "";
+    name.title = row.name || "";
+    const status = document.createElement("td");
+    status.className = "status " + row.status;
+    status.textContent = label(row.status);
+    const score = document.createElement("td");
+    score.textContent = Number.isInteger(row.score)
+      ? String(row.score) : "\u2014";
+    if (row.suggestion_count) {
+      const extra = row.suggestion_count > 1
+        ? " (latest of " + row.suggestion_count + ")" : "";
+      score.title = (row.judge_model || "judge") + extra;
+    }
+    const range = document.createElement("td");
+    if (Number.isInteger(row.suggested_start) &&
+        Number.isInteger(row.suggested_end)) {
+      range.textContent = row.suggested_start + "\u2013" + row.suggested_end;
+      range.title = "suggested start " + row.suggested_start +
+        ", end " + row.suggested_end + " (exclusive)";
+    } else {
+      range.textContent = "\u2014";
+    }
+    tr.append(idCell, name, status, score, range);
+    body.append(tr);
+  });
+}
+
+function describeWindow(turns, start, end) {
+  if (start === null || end === null ||
+      !(start >= 0 && start < end && end <= turns.length)) {
+    return "Range is outside the log. End is exclusive.";
+  }
+  const ready = end - start >= 2 &&
+    turns[end - 2].role === "user" && turns[end - 1].role === "assistant";
+  if (ready) {
+    return "Window ends with a user turn, then the final assistant reply.";
+  }
+  return "Window must end with a user turn, then an assistant reply.";
+}
+
+function renderLog() {
+  const log = $("log");
+  log.replaceChildren();
+  if (!scene) return;
+  const start = parseIntField($("start").value);
+  const end = parseIntField($("end").value);
+  $("window-note").textContent = describeWindow(scene.turns, start, end);
+  let finalRow = null;
+  scene.turns.forEach((turn, index) => {
+    const row = document.createElement("article");
+    const inside = start !== null && end !== null &&
+      index >= start && index < end;
+    const isFinal = inside && index === end - 1 && turn.role === "assistant";
+    row.className = "turn" + (inside ? " in" : "") + (isFinal ? " final" : "");
+    const head = document.createElement("header");
+    head.textContent = "[" + index + "] " + turn.role;
+    if (isFinal) {
+      const badge = document.createElement("span");
+      badge.className = "badge";
+      badge.textContent = "Final assistant reply";
+      head.append(" ");
+      head.append(badge);
+    }
+    const body = document.createElement("p");
+    body.textContent = turn.content;
+    row.append(head, body);
+    log.append(row);
+    if (isFinal) finalRow = row;
+  });
+  if (finalRow) {
+    const scroller = finalRow.closest(".read");
+    const overflow = getComputedStyle(scroller).overflowY;
+    if (overflow === "auto" || overflow === "scroll") {
+      finalRow.scrollIntoView({block: "nearest"});
+    }
+  }
+}
+
+function renderSuggestions() {
+  const root = $("suggestions");
+  root.replaceChildren();
+  scene.suggestions.forEach((item) => {
+    const block = document.createElement("section");
+    block.className = "suggestion";
+    const title = document.createElement("h3");
+    const bits = [item.judge_model || "judge"];
+    if (item.status) bits.push(item.status);
+    if (Number.isInteger(item.total)) bits.push("score " + item.total);
+    if (Number.isInteger(item.start) && Number.isInteger(item.end)) {
+      bits.push(item.start + "\u2013" + item.end);
+    }
+    title.textContent = bits.join(" \u00b7 ");
+    block.append(title);
+    ["keep_reason", "concern", "skip_reason"].forEach((key) => {
+      if (!item[key]) return;
+      const paragraph = document.createElement("p");
+      paragraph.textContent = key.replace("_", " ") + ": " + item[key];
+      block.append(paragraph);
+    });
+    if (Array.isArray(item.flags) && item.flags.length) {
+      const flags = document.createElement("p");
+      flags.textContent = "flags: " + item.flags.join(", ");
+      block.append(flags);
+    }
+    if (Number.isInteger(item.start) && Number.isInteger(item.end)) {
+      const use = document.createElement("button");
+      use.type = "button";
+      use.textContent = "Use this range";
+      use.addEventListener("click", () => {
+        $("start").value = String(item.start);
+        $("end").value = String(item.end);
+        setNote("");
+        renderLog();
+      });
+      block.append(use);
+    }
+    root.append(block);
+  });
+}
+
+async function openScene(id) {
+  const token = ++loadToken;
+  selected = id;
+  renderQueue();
+  setNote("");
+  const response = await fetch("/api/scene/" + encodeURIComponent(id));
+  const payload = await readJson(response);
+  if (token !== loadToken) return;
+  scene = payload;
+  $("empty").hidden = true;
+  $("editor").hidden = false;
+  $("name").textContent = scene.name || "(unnamed)";
+  const status = $("status");
+  status.textContent = label(scene.status);
+  status.className = "status " + scene.status;
+  $("group").textContent = scene.group ? "group " + scene.group : "";
+  $("scene-id").textContent = scene.scene_id;
+  $("system").value = scene.system || "";
+  $("start").value = Number.isInteger(scene.start) ? String(scene.start) : "";
+  $("end").value = Number.isInteger(scene.end) ? String(scene.end) : "";
+  $("length").textContent = scene.turns.length + " turns";
+  renderSuggestions();
+  renderLog();
+}
+
+async function loadQueue() {
+  queue = await readJson(await fetch("/api/queue"));
+  renderQueue();
+}
+
+async function decide(status, advance) {
+  if (!scene) return;
+  const start = parseIntField($("start").value);
+  const end = parseIntField($("end").value);
+  if (start === null || end === null) {
+    setNote("Start and end must be integers.", "bad");
+    return;
+  }
+  const previous = visible().map((row) => row.scene_id);
+  const index = previous.indexOf(selected);
+  setBusy(true);
+  setNote("");
+  try {
+    await readJson(await fetch("/api/scene/" + encodeURIComponent(selected), {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({
+        system: $("system").value,
+        start: start,
+        end: end,
+        review_status: status,
+      }),
+    }));
+    await loadQueue();
+    let pick = null;
+    if (advance && index >= 0) {
+      const still = new Set(visible().map((row) => row.scene_id));
+      for (let i = index + 1; i < previous.length; i += 1) {
+        if (still.has(previous[i])) { pick = previous[i]; break; }
+      }
+    }
+    if (pick) {
+      await openScene(pick);
+    } else {
+      await openScene(selected);
+      if (advance) setNote("Saved. No further rows in this queue.", "ok");
+    }
+  } catch (error) {
+    setNote(error.message, "bad");
+  } finally {
+    setBusy(false);
+  }
+}
+
+function setSort(key) {
+  if (sortKey === key) sortAsc = !sortAsc;
+  else {
+    sortKey = key;
+    sortAsc = key !== "score";
+  }
+  renderQueue();
+}
+
+document.querySelectorAll("th button").forEach((button) => {
+  button.dataset.label = button.textContent.trim();
+  button.addEventListener("click", () => setSort(button.dataset.sort));
+});
+$("queue").addEventListener("click", (event) => {
+  const row = event.target.closest("tr");
+  if (row && row.dataset.id) openScene(row.dataset.id);
+});
+$("filter").addEventListener("change", renderQueue);
+$("query").addEventListener("input", renderQueue);
+function onWindowEdit() {
+  setNote("");
+  renderLog();
+}
+$("start").addEventListener("input", onWindowEdit);
+$("end").addEventListener("input", onWindowEdit);
+$("approve").addEventListener("click", () => decide("approved", true));
+$("skip").addEventListener("click", () => decide("skipped", true));
+$("pending").addEventListener("click", () => decide("pending", false));
+
+$("count").textContent = "Loading…";
+loadQueue().then(() => {
+  const first = visible()[0];
+  if (first) return openScene(first.scene_id);
+}).catch((error) => {
+  $("empty").textContent = error.message;
+});
+</script>
+</body>
+</html>
