@@ -138,7 +138,18 @@ into a BEGINNING and an ENDING excerpt (about 7,000 characters each) and asks
 for a memory check, a mechanics/anti-slop check, and a lorebook summary of the
 BEGINNING in one JSON reply. A log is `passed` only if `memory_score >= 4`,
 `quality_score >= 4`, and `god_moding`, `ooc_or_refusal` and `repetitive_slop`
-are all false; otherwise it is `rejected` with `reject_reasons`. It only writes
+are all false; otherwise it is `rejected` with `reject_reasons`.
+
+It also keeps the 0-2 rubric (`responsiveness`, `character_consistency`,
+`player_agency`, `story_progression`, summed into `total`, plus `keep_reason`
+and `concern`) as the standard for comparing judges. The rubric scores the
+final reply of the row's own `start`/`end` window and never rejects. A row
+without a valid window (`invalid_range`, `bad_final_roles`) is recorded as
+`failed` without a model call; fix the window and run again. Dark and adult
+themes are never rejected or scored down: they set `mature_content` and add a
+`mature_content` flag so you can check those scenes by hand.
+
+It only writes
 `work/review_triage.jsonl` and `work/review_triage.csv`. It never touches
 `work/review.jsonl`: you still set `approved`, `start`/`end`, and `system` by
 hand. It does not suggest ranges. Read the limitations at the top of

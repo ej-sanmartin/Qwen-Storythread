@@ -23,11 +23,14 @@ SUMMARY = "- Wick is a lamplighter on the pier."
 
 
 def verdict(memory=5, quality=5, god=False, ooc=False, slop=False,
-            contradictions=(), summary=SUMMARY):
-    """Returns the model's JSON verdict as a dict."""
+            contradictions=(), summary=SUMMARY, mature=False, rubric=2):
+    """Returns the model's JSON verdict as a dict (rubric: every criterion)."""
     return {"lorebook_summary": summary, "contradictions": list(contradictions),
             "memory_score": memory, "god_moding": god, "ooc_or_refusal": ooc,
-            "repetitive_slop": slop, "quality_score": quality}
+            "repetitive_slop": slop, "quality_score": quality,
+            "mature_content": mature, "keep_reason": "Clear reply.",
+            "concern": "None.",
+            "scores": {name: rubric for name in judge.CRITERIA}}
 
 
 def reply(content):
@@ -218,14 +221,65 @@ class JudgeTest(unittest.TestCase):
         over = self.judge("--limit", "1", "--max-tokens", "20")[0]
         self.assertEqual(over["flags"], ["target_truncated"])
 
-    def test_bad_review_window_is_flagged_without_tokens(self):
+    def test_bad_review_window_fails_without_a_model_call(self):
         review = self.tmp / "window-review.jsonl"
         first = next(rows(self.review))
         write_rows(review, [{**first, "end": 6}])
         got = self.judge("--limit", "1", review=review)[0]
-        self.assertEqual(got["flags"], ["bad_final_roles"])
-        self.assertNotIn("tokens", got)
+        self.assertEqual((got["status"], got["flags"]),
+                         ("failed", ["bad_final_roles"]))
+        self.assertIn("invalid review window", got["error"])
+        self.assertNotIn("memory_score", got)
+        self.assertEqual(self.server.requests, [])
+
+    def test_rubric_scores_total_and_reasons_are_saved(self):
+        reply_ = verdict()
+        reply_["scores"] = {"responsiveness": 2, "character_consistency": 1,
+                            "player_agency": 0, "story_progression": 2}
+        self.server.replies["Wick"] = reply(json.dumps(reply_))
+        got = self.judge("--limit", "1")[0]
+        self.assertEqual(got["scores"], reply_["scores"])
+        self.assertEqual(got["total"], 5)
+        line = self.csv_rows()[0]
+        self.assertEqual((line["total"], line["responsiveness"],
+                          line["character_consistency"],
+                          line["player_agency"], line["story_progression"]),
+                         ("5", "2", "1", "0", "2"))
+        self.assertEqual((line["keep_reason"], line["concern"]),
+                         ("Clear reply.", "None."))
+
+    def test_low_rubric_scores_do_not_reject(self):
+        self.server.replies["Wick"] = good(rubric=0)
+        got = self.judge("--limit", "1")[0]
+        self.assertEqual((got["status"], got["total"]), ("passed", 0))
+
+    def test_mature_content_is_flagged_but_not_rejected(self):
+        self.server.replies["Wick"] = good(mature=True)
+        got = self.judge("--limit", "1")[0]
         self.assertEqual(got["status"], "passed")
+        self.assertEqual(got["reject_reasons"], [])
+        self.assertEqual(got["flags"], ["mature_content"])
+        line = self.csv_rows()[0]
+        self.assertEqual((line["mature_content"], line["flags"]),
+                         ("True", "mature_content"))
+
+    def test_mature_content_never_hides_a_real_rejection(self):
+        self.server.replies["Wick"] = good(mature=True, god=True)
+        got = self.judge("--limit", "1")[0]
+        self.assertEqual(got["reject_reasons"], ["god_moding"])
+        self.assertIn("mature_content", got["flags"])
+
+    def test_target_section_holds_the_review_windows_last_two_turns(self):
+        row = next(rows(self.review))
+        turns = self.scenes[row["scene_id"]]["turns"]
+        self.judge("--limit", "1")
+        user = self.server.requests[0][1]["messages"][1]["content"]
+        target = user.split("TARGET:\n")[1].splitlines()
+        end = row["end"]
+        self.assertEqual(
+            [json.loads(line)["turn"] for line in target], [end - 2, end - 1])
+        self.assertEqual(json.loads(target[-1])["content"],
+                         turns[end - 1]["content"])
 
     def test_request_options_and_schema(self):
         self.judge("--limit", "1")
@@ -249,7 +303,11 @@ class JudgeTest(unittest.TestCase):
         for needle in ("one JSON", "Never refuse", "untrusted", "dark, adult",
                        "BEGINNING", "ENDING", "memory_score", "god_moding",
                        "ooc_or_refusal", "repetitive_slop", "quality_score",
-                       "lorebook_summary", "120 words", "ministrations"):
+                       "lorebook_summary", "120 words", "ministrations",
+                       "mature_content", "never lower a score", "TARGET",
+                       "responsiveness", "character_consistency",
+                       "player_agency", "story_progression", "keep_reason",
+                       "concern", "0 to 2"):
             self.assertIn(needle, text)
 
     def test_log_text_is_data_and_the_card_is_not_sent(self):
@@ -405,7 +463,13 @@ class JudgeTest(unittest.TestCase):
         for field, value in (("memory_score", 0), ("memory_score", 5.0),
                              ("quality_score", True), ("god_moding", "no"),
                              ("contradictions", "none"),
-                             ("lorebook_summary", None)):
+                             ("lorebook_summary", None),
+                             ("mature_content", "yes"), ("concern", 3),
+                             ("scores", {"responsiveness": 2}),
+                             ("scores", {**verdict()["scores"],
+                                         "player_agency": 3}),
+                             ("scores", {**verdict()["scores"],
+                                         "player_agency": True})):
             bad = verdict()
             bad[field] = value
             with self.assertRaises(ValueError, msg=(field, value)):
