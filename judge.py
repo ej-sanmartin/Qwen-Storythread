@@ -21,8 +21,8 @@ CHARS_PER_TOKEN = 3
 REPLY_TOKENS = 512
 CRITERIA = ("responsiveness", "character_consistency", "player_agency",
             "story_progression")
-CSV_FIELDS = ["scene_id", "name", "status", "total", *CRITERIA, "start",
-              "end", "tokens", "flags", "rationale", "judge_model"]
+CSV_FIELDS = ["scene_id", "name", "judge_model", "status", "total",
+              *CRITERIA, "start", "end", "tokens", "flags", "rationale"]
 
 JUDGE_PROMPT = """\
 You help curate roleplay transcripts into supervised training examples.
@@ -216,7 +216,7 @@ def rationale(result):
 
 
 def write_csv(path, results):
-    """Rebuilds the sortable summary from the latest row per scene."""
+    """Rebuilds the summary from the latest row per scene and judge model."""
     with Path(path).open("w", encoding="utf-8", newline="") as file:
         writer = csv.DictWriter(file, CSV_FIELDS)
         writer.writeheader()
@@ -257,19 +257,21 @@ def load_scenes(args, done):
 def run(args, tokenizer):
     """Judges the next unjudged review rows into the JSONL and the CSV.
 
-    The JSONL is appended to; the CSV is rebuilt from it. A scene counts as
-    judged once the output holds a proposed or skipped row from the same
-    --model. Failed rows and rows from another model are judged again, and
-    the latest row per scene wins in the CSV.
+    The JSONL is appended to; the CSV is rebuilt from it with one row per
+    (scene, judge model), so another model never replaces a judge's row. A
+    scene counts as judged once the output holds a proposed or skipped row
+    from the same --model; failed rows are judged again, and the latest row
+    per scene and model wins.
     Returns: the new result rows. Failed calls are recorded, not raised.
     """
     if not args.endpoint.startswith(("http://", "https://")):
         raise SystemExit("--endpoint must start with http:// or https://")
     latest = {}
     if Path(args.output).exists():
-        latest = {row["scene_id"]: row for row in rows(args.output)}
-    done = {sid for sid, row in latest.items()
-            if row["status"] != "failed" and row["judge_model"] == args.model}
+        latest = {(r["scene_id"], r["judge_model"]): r
+                  for r in rows(args.output)}
+    done = {sid for (sid, model), row in latest.items()
+            if model == args.model and row["status"] != "failed"}
     review, scenes = load_scenes(args, done)
     print(f"{len(done)} scene(s) already judged; judging {len(review)} more.",
           file=sys.stderr)
@@ -283,7 +285,7 @@ def run(args, tokenizer):
                           **evaluate(args, tokenizer, scene,
                                      clean(row.get("system")))}
                 results.append(result)
-                latest[result["scene_id"]] = result
+                latest[(result["scene_id"], args.model)] = result
                 file.write(json.dumps(result, ensure_ascii=False) + "\n")
                 file.flush()
                 print(f"[{number}/{len(review)}] {row['scene_id'][:8]} "

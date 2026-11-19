@@ -253,15 +253,21 @@ class JudgeTest(unittest.TestCase):
         self.assertEqual(len(table), 8)
         self.assertEqual(table["Pell"]["status"], "proposed")
 
-    def test_a_different_model_judges_again(self):
-        self.judge("--limit", "1")
+    def test_a_different_model_judges_again_without_replacing_the_first(self):
+        self.judge("--limit", "1", "--model", "sonnet")
         self.server.requests.clear()
         self.judge("--limit", "1", "--model", "other:1b")
         self.assertEqual(self.names(), ["Wick"])
         self.assertEqual(self.server.requests[0][1]["model"], "other:1b")
         with self.table.open(encoding="utf-8", newline="") as file:
-            self.assertEqual([r["judge_model"] for r in csv.DictReader(file)],
-                             ["other:1b"])
+            table = list(csv.DictReader(file))
+        self.assertEqual([(r["name"], r["judge_model"]) for r in table],
+                         [("Wick", "sonnet"), ("Wick", "other:1b")])
+        self.assertEqual(
+            [r["judge_model"] for r in rows(self.out)], ["sonnet", "other:1b"])
+        self.server.requests.clear()
+        self.judge("--limit", "1", "--model", "sonnet")
+        self.assertEqual(self.names(), ["Sorrel"])
 
     def test_nothing_left_to_judge_makes_no_calls(self):
         review = self.tmp / "three-review.jsonl"

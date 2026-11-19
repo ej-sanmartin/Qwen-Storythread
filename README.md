@@ -147,10 +147,18 @@ That judges the next 20 rows of `work/review.jsonl` (about 15 s per scene on
 Apple Silicon). Run the same command again for the next batch: scenes already
 in `work/review_suggestions.jsonl` are skipped, so no copying or offsets are
 needed. A scene counts as judged once it has a `proposed` or `skipped` row from
-the same `--model`. `failed` rows and rows from a different model are judged
-again. The JSONL is only appended to; the CSV is rebuilt from it every run
-(newest row per scene), so keep notes elsewhere. To start over, delete the two
+the same `--model`; `failed` rows are judged again. Every row records its
+`judge_model`, and a different `--model` judges the scene again without
+replacing the first judge's row, so the CSV holds one row per scene and model
+for side-by-side comparison. The JSONL is only appended to; the CSV is rebuilt
+from it every run, so keep notes elsewhere. To start over, delete the two
 output files.
+
+To use another model, pull it and pass its Ollama name: `ollama pull <name>`,
+then `python judge.py --model <name>`. Use `--endpoint` for an Ollama server on
+another machine. The model must support Ollama structured outputs. The script
+speaks only Ollama's `/api/chat`, so hosted models (Claude, GPT) are not
+supported.
 
 Options: `--model` (default `qwen3.5:4b`), `--endpoint`
 (`http://127.0.0.1:11434`), `--max-tokens` (training cap used for flagging,
