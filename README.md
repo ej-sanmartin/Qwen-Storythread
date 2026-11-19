@@ -131,6 +131,51 @@ python data.py show work/index.jsonl <scene_id>        # read a scene by turn nu
 Indexing is broad by default. `--pattern REGEX` and `--tag fantasy|romance`
 (repeatable) are optional search aids that narrow the index and fill `tags`.
 
+### Optional: local judge suggestions
+
+`judge.py` asks a local Ollama model to suggest a range and 0-2 scores for each
+review row. It only writes `work/review_suggestions.jsonl` and
+`work/review_suggestions.csv`. It never touches `work/review.jsonl`: you still
+set `approved`, `start`/`end`, and `system` by hand.
+
+```bash
+ollama pull qwen3.5:4b   # once; the Ollama server must be running
+python judge.py --limit 20
+```
+
+That judges the first 20 rows of `work/review.jsonl` (about 15 s per scene on
+Apple Silicon). Options: `--model` (default `qwen3.5:4b`), `--endpoint`
+(`http://127.0.0.1:11434`), `--max-tokens` (training cap used for flagging,
+default 1024), `--limit` (default 20, `0` = all rows), `--num-ctx` (judge
+context, default 8192), and `--output`/`--csv`. It refuses to overwrite
+existing output files.
+
+Each request sends one card and its turns as JSON-escaped data, with a system
+prompt that tells the model to ignore instructions inside them. Long scenes show
+only the newest turns that fit `--num-ctx`; `shown_from` records the first turn
+shown. The model names the turn of the final reply (`reply_turn`) and `start`;
+Python sets `end = reply_turn + 1` (exclusive, as in `review.jsonl`), checks the
+range, totals the four scores (0-8), and counts tokens of the full example using
+the row's current `system` card with the same logic as `runtime.py check-data`.
+
+| `status` | Meaning |
+|---|---|
+| `proposed` | The model suggested a range. Check `flags`. |
+| `skipped` | The model deliberately found no good target; see `skip_reason`. |
+| `failed` | The call or its output was unusable (`error`); not a judgment. |
+
+`flags` keep problem rows visible instead of dropping them: `invalid_range`
+(out of bounds or under two turns), `bad_final_roles` (not user then assistant),
+`target_truncated` (full example over `--max-tokens`; same flag as `check-data`),
+`invalid_scores`, `prompt_truncated` (the scene filled `--num-ctx`), and
+`empty_card`.
+
+Sort the CSV by `total` after filtering out rows with `flags`. Treat scores as a
+rough ordering: a 4B judge gives similar totals to most scenes, so read the
+`rationale` (one reason to keep, one concern) before approving. The judge may
+also skip mature scenes on its own content policy, which the rubric does not ask
+for; check `skip_reason` before trusting a skip.
+
 Edit `work/review.jsonl`. For each scene you keep, set `approved: true`, choose
 the window with `start`/`end` (turn indices from `show`; the window must end in
 a user turn then an assistant turn), and replace `system` with a concise
@@ -325,6 +370,7 @@ same turn, differ there, and share the system card and final user prompt.
 | Output | Location |
 |---|---|
 | Index, review template | `work/index.jsonl`, `work/review.jsonl` |
+| Judge suggestions (advisory) and sortable CSV | `work/review_suggestions.{jsonl,csv}` |
 | Arm datasets | `work/datasets/{recent,earlier}/{train,valid}.jsonl` |
 | Review manifest (source, group, split, `row`, `branch`, `evidence_turn`, `evidence_distance_turns`, window) | `work/datasets/<arm>/manifest.jsonl` |
 | Export counts, authored share, core hash | `work/datasets/summary.json` |
