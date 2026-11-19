@@ -62,10 +62,11 @@
     max-width: 9rem; overflow: hidden; text-overflow: ellipsis;
     white-space: nowrap;
   }
-  button.id {
-    font: 13px ui-monospace, monospace; background: none; border: 0;
-    padding: 0; color: var(--text);
+  a.id {
+    font: 13px ui-monospace, monospace; color: var(--text);
+    text-decoration: none;
   }
+  a.id:hover { text-decoration: underline; }
   .status.pending { color: var(--warn); }
   .status.approved { color: var(--good); }
   .status.skipped { color: var(--muted); }
@@ -180,12 +181,12 @@
     <p id="empty">Select a scene.</p>
     <section id="editor" hidden>
       <h2 id="name"></h2>
-      <p>
-        <span id="status" class="status"></span>
-        <span id="group" class="hint"></span>
-      </p>
+      <p id="status" class="status"></p>
+      <p class="hint">Group <span id="group"></span></p>
       <p id="scene-id"></p>
-      <label for="system">Character card</label>
+      <label for="system">Character card
+        <span class="hint">system prompt for this window</span>
+      </label>
       <textarea id="system"></textarea>
       <div class="window">
         <label>Start
@@ -316,12 +317,12 @@ function renderQueue() {
     tr.dataset.id = row.scene_id;
     if (row.scene_id === selected) tr.classList.add("selected");
     const idCell = document.createElement("td");
-    const idButton = document.createElement("button");
-    idButton.type = "button";
-    idButton.className = "id";
-    idButton.textContent = row.scene_id.slice(0, 8);
-    idButton.title = row.scene_id;
-    idCell.append(idButton);
+    const idLink = document.createElement("a");
+    idLink.className = "id";
+    idLink.href = scenePath(row.scene_id);
+    idLink.textContent = row.scene_id.slice(0, 8);
+    idLink.title = row.scene_id;
+    idCell.append(idLink);
     const name = document.createElement("td");
     name.className = "name";
     name.textContent = row.name || "";
@@ -468,23 +469,62 @@ function renderSuggestions() {
   });
 }
 
+function scenePath(id) {
+  return "/scene/" + encodeURIComponent(id);
+}
+
+function sceneFromLocation() {
+  const path = decodeURIComponent(location.pathname);
+  const prefix = "/scene/";
+  if (!path.startsWith(prefix) || path === prefix) return null;
+  return path.slice(prefix.length);
+}
+
+function showQueue() {
+  loadToken += 1;
+  selected = null;
+  scene = null;
+  $("editor").hidden = true;
+  $("empty").hidden = false;
+  $("empty").textContent = "Select a scene.";
+  document.title = "Storythread review";
+  renderQueue();
+}
+
+async function go(id) {
+  const url = scenePath(id);
+  if (decodeURIComponent(location.pathname) !== url) {
+    history.pushState({scene_id: id}, "", url);
+  }
+  await openScene(id);
+}
+
 async function openScene(id) {
   const token = ++loadToken;
   selected = id;
   renderQueue();
   setNote("");
-  const response = await fetch("/api/scene/" + encodeURIComponent(id));
-  const payload = await readJson(response);
-  if (token !== loadToken) return;
-  scene = payload;
+  try {
+    const response = await fetch("/api/scene/" + encodeURIComponent(id));
+    const payload = await readJson(response);
+    if (token !== loadToken) return;
+    scene = payload;
+  } catch (error) {
+    if (token !== loadToken) return;
+    $("editor").hidden = true;
+    $("empty").hidden = false;
+    $("empty").textContent = error.message;
+    return;
+  }
   $("empty").hidden = true;
   $("editor").hidden = false;
   $("name").textContent = scene.name || "(unnamed)";
   const status = $("status");
   status.textContent = label(scene.status);
   status.className = "status " + scene.status;
-  $("group").textContent = scene.group ? "group " + scene.group : "";
+  $("group").textContent = scene.group || "(none)";
   $("scene-id").textContent = scene.scene_id;
+  document.title = (scene.name || "Scene") + " · Storythread review";
   $("system").value = scene.system || "";
   $("start").value = Number.isInteger(scene.start) ? String(scene.start) : "";
   $("end").value = Number.isInteger(scene.end) ? String(scene.end) : "";
@@ -530,7 +570,7 @@ async function decide(status, advance) {
       }
     }
     if (pick) {
-      await openScene(pick);
+      await go(pick);
     } else {
       await openScene(selected);
       if (advance) setNote("Saved. No further rows in this queue.", "ok");
@@ -557,7 +597,16 @@ document.querySelectorAll("th button").forEach((button) => {
 });
 $("queue").addEventListener("click", (event) => {
   const row = event.target.closest("tr");
-  if (row && row.dataset.id) openScene(row.dataset.id);
+  if (!row || !row.dataset.id) return;
+  if (event.button !== 0 || event.metaKey || event.ctrlKey ||
+      event.shiftKey || event.altKey) return;
+  event.preventDefault();
+  go(row.dataset.id);
+});
+window.addEventListener("popstate", () => {
+  const id = sceneFromLocation();
+  if (id) openScene(id);
+  else showQueue();
 });
 $("filter").addEventListener("change", renderQueue);
 $("query").addEventListener("input", renderQueue);
@@ -587,8 +636,8 @@ $("theme").addEventListener("click", () => {
 
 $("count").textContent = "Loading…";
 loadQueue().then(() => {
-  const first = visible()[0];
-  if (first) return openScene(first.scene_id);
+  const id = sceneFromLocation();
+  if (id) return openScene(id);
 }).catch((error) => {
   $("empty").textContent = error.message;
 });

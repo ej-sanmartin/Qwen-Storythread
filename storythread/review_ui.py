@@ -282,11 +282,17 @@ def make_server(review, index, suggestions, port):
             """Handles a decision for one scene."""
             self._route("POST")
 
+        def _is_page(self, path):
+            """True for the queue and for /scene/<scene_id>."""
+            if path in ("/", "/index.html"):
+                return True
+            return path.startswith("/scene/") and path != "/scene/"
+
         def _route(self, method):
             """Dispatches one request, or returns a JSON error."""
             path = unquote(urlparse(self.path).path)
             try:
-                if method == "GET" and path in ("/", "/index.html"):
+                if method == "GET" and self._is_page(path):
                     page = HTML.read_bytes()
                     self._send(200, "text/html; charset=utf-8", page)
                     return

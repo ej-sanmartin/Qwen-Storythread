@@ -94,7 +94,7 @@ class ReviewUiTest(unittest.TestCase):
         except urllib.error.HTTPError as error:
             raw = error.read()
             status = error.code
-        if path == "/":
+        if path == "/" or path.startswith("/scene/"):
             return status, raw
         return status, json.loads(raw.decode())
 
@@ -104,6 +104,9 @@ class ReviewUiTest(unittest.TestCase):
         self.assertIn(b"Approve and next", body)
         self.assertIn(b"Skip and next", body)
         self.assertIn(b"Return to pending", body)
+        scene_page = self.request("GET", "/scene/" + PENDING)
+        self.assertEqual(scene_page[0], 200)
+        self.assertIn(b"Approve and next", scene_page[1])
 
     def test_decisions_persist_and_prepare_still_reads_approved(self):
         status, queue = self.request("GET", "/api/queue")

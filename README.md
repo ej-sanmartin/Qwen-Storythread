@@ -236,7 +236,8 @@ The queue opens on pending rows. Click a column heading to sort. Names come
 from the index. When the suggestions file has that scene, the row shows the
 latest scored total and its suggested `start`/`end`.
 
-Click a scene id for the numbered chat. Edit `system`, `start`, and `end`
+Each scene has its own page, `/scene/<scene_id>`. Click a scene id to open
+it; back returns to the queue. Edit `system`, `start`, and `end`
 (`end` is exclusive). Turns in the window are highlighted, and the window's
 last assistant turn is labeled as the final reply. Then use **Approve and
 next**, **Skip and next**, or **Return to pending**.
