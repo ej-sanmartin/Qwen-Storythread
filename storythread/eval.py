@@ -11,8 +11,8 @@ from pathlib import Path
 import random
 from time import perf_counter
 
-from data import rows, write_rows
-from scenarios import VERSIONS, check_disjoint, parse_scenarios
+from .data import rows, write_rows
+from .scenarios import VERSIONS, check_disjoint, parse_scenarios
 
 QUESTION = "Which character would you rather keep chatting with?"
 

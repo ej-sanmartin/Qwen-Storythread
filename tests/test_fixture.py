@@ -9,18 +9,19 @@ import unittest
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-import eval as evaluation  # noqa: E402
-import runtime  # noqa: E402
-from data import rows, write_rows  # noqa: E402
+from storythread import eval as evaluation  # noqa: E402
+from storythread import runtime  # noqa: E402
+from storythread.data import rows, write_rows  # noqa: E402
 
 FIXTURES = ROOT / "fixtures"
 CONDITIONS = ("base", "recent", "earlier")
 
 
-def run(script, *args, check=True):
-    """Runs a CLI script and returns the completed process."""
-    result = subprocess.run([sys.executable, str(ROOT / script), *map(str, args)],
-                            capture_output=True, text=True, cwd=ROOT)
+def run(module, *args, check=True):
+    """Runs storythread.<module> as a CLI and returns the completed process."""
+    result = subprocess.run(
+        [sys.executable, "-m", f"storythread.{module}", *map(str, args)],
+        capture_output=True, text=True, cwd=ROOT)
     if check and result.returncode:
         raise AssertionError(result.stderr)
     return result
@@ -55,7 +56,7 @@ class ExportTest(unittest.TestCase):
     def setUpClass(cls):
         cls.dir = tempfile.TemporaryDirectory()
         cls.out = Path(cls.dir.name) / "datasets"
-        run("data.py", "prepare", FIXTURES / "pippa-sample.jsonl", FIXTURES / "review.jsonl",
+        run("data", "prepare", FIXTURES / "pippa-sample.jsonl", FIXTURES / "review.jsonl",
             FIXTURES / "authored.jsonl", cls.out, "--valid-share", 0.25, "--seed", 3)
 
     @classmethod
@@ -127,7 +128,7 @@ class ExportTest(unittest.TestCase):
         scenes[0]["branches"]["earlier"]["evidence"] = "brass bell"
         path = Path(self.dir.name) / "bad.jsonl"
         write_rows(path, scenes)
-        result = run("data.py", "prepare", FIXTURES / "pippa-sample.jsonl",
+        result = run("data", "prepare", FIXTURES / "pippa-sample.jsonl",
                      FIXTURES / "review.jsonl", path, Path(self.dir.name) / "bad-out",
                      check=False)
         self.assertNotEqual(result.returncode, 0)
@@ -156,15 +157,15 @@ class EvalTest(unittest.TestCase):
         return paths
 
     def test_validate_checks_dev_test_separation(self):
-        ok = run("eval.py", "validate", FIXTURES / "eval-dev.jsonl", self.cases)
+        ok = run("eval", "validate", FIXTURES / "eval-dev.jsonl", self.cases)
         self.assertEqual(json.loads(ok.stdout)["test"], 3)
-        bad = run("eval.py", "validate", self.cases, self.cases, check=False)
+        bad = run("eval", "validate", self.cases, self.cases, check=False)
         self.assertNotEqual(bad.returncode, 0)
 
     def test_continuity_primary_metric_and_distance_breakdown(self):
         paths = self.outputs()
         sheet, key = self.tmp / "sheet.jsonl", self.tmp / "key.jsonl"
-        run("eval.py", "sheet", self.cases, sheet, key, "--outputs", *paths)
+        run("eval", "sheet", self.cases, sheet, key, "--outputs", *paths)
         labels = {k["id"]: k["labels"] for k in rows(key)}
         self.assertEqual(len({tuple(sorted(v.items())) for v in labels.values()}) > 1, True)
         rated = []
@@ -177,7 +178,7 @@ class EvalTest(unittest.TestCase):
             rated.append(row)
         ratings = self.tmp / "rated.jsonl"
         write_rows(ratings, rated)
-        out = json.loads(run("eval.py", "continuity", self.cases, ratings, key).stdout)
+        out = json.loads(run("eval", "continuity", self.cases, ratings, key).stdout)
         self.assertEqual(out["earlier"]["both_versions"],
                          {"count": 3, "total": 3, "percent": 100.0})
         self.assertEqual(out["recent"]["both_versions"]["count"], 2)
@@ -190,27 +191,27 @@ class EvalTest(unittest.TestCase):
 
     def test_unrated_replies_are_rejected(self):
         sheet, key = self.tmp / "sheet.jsonl", self.tmp / "key.jsonl"
-        run("eval.py", "sheet", self.cases, sheet, key, "--outputs", *self.outputs())
-        result = run("eval.py", "continuity", self.cases, sheet, key, check=False)
+        run("eval", "sheet", self.cases, sheet, key, "--outputs", *self.outputs())
+        result = run("eval", "continuity", self.cases, sheet, key, check=False)
         self.assertNotEqual(result.returncode, 0)
 
     def test_mismatched_case_files_are_rejected(self):
         paths = self.outputs()
         write_rows_overwrite(paths[2], [{**r, "cases_sha": "stale"} for r in rows(paths[2])])
-        result = run("eval.py", "sheet", self.cases, self.tmp / "s.jsonl", self.tmp / "k.jsonl",
+        result = run("eval", "sheet", self.cases, self.tmp / "s.jsonl", self.tmp / "k.jsonl",
                      "--outputs", *paths, check=False)
         self.assertNotEqual(result.returncode, 0)
 
     def test_engagement_preference_is_separate(self):
         first, second = self.outputs()[:2]
         public, key = self.tmp / "blind.jsonl", self.tmp / "blind-key.jsonl"
-        run("eval.py", "blind", self.cases, first, second, public, key)
+        run("eval", "blind", self.cases, first, second, public, key)
         rated = [{**row, "winner": "A"} for row in rows(public)]
         self.assertIn("rather keep chatting", rated[0]["question"])
         self.assertNotIn("expected", rated[0])
         ratings = self.tmp / "blind-rated.jsonl"
         write_rows(ratings, rated)
-        out = json.loads(run("eval.py", "score", ratings, key).stdout)
+        out = json.loads(run("eval", "score", ratings, key).stdout)
         self.assertEqual(out["cases"], 6)
         self.assertEqual(out["preferred"]["base"] + out["preferred"]["recent"], 6)
 

@@ -90,8 +90,13 @@ Run every command from the repository root (this directory) inside a virtualenv.
 python3 -m venv .venv && source .venv/bin/activate
 pip install "mlx-lm==0.32.2" huggingface_hub transformers pyyaml
 python -m unittest discover tests        # fixture end-to-end check, no GPU needed
-python runtime.py setup-model            # freezes models/qwen35-4b-q4 (records revision)
+python -m storythread.runtime setup-model            # freezes models/qwen35-4b-q4 (records revision)
 ```
+
+The scripts live in the `storythread/` package. Run each from the repository
+root as `python -m storythread.<name>` (`data`, `judge`, `runtime`, `eval`,
+`review_ui`); `export`, `scenarios`, and `splits` are helpers. Configs
+(`pilot.yaml`, `smoke.yaml`), `fixtures/`, and `tests/` stay at the root.
 
 `data.py`, `review_ui.py`, `eval.py` (except `generate`), and the tests use
 only the standard library. `mlx-lm` 0.32.2 is the version this guide was
@@ -124,9 +129,9 @@ PIPPA contains mature and disturbing content. You decide what is approved.
 
 ```bash
 hf download PygmalionAI/PIPPA pippa_deduped.jsonl --repo-type dataset --local-dir work/pippa
-python data.py index work/pippa/pippa_deduped.jsonl work/index.jsonl
-python data.py review work/index.jsonl work/review.jsonl --sample 300
-python data.py show work/index.jsonl <scene_id>        # read a scene by turn number
+python -m storythread.data index work/pippa/pippa_deduped.jsonl work/index.jsonl
+python -m storythread.data review work/index.jsonl work/review.jsonl --sample 300
+python -m storythread.data show work/index.jsonl <scene_id>        # read a scene by turn number
 ```
 
 Indexing is broad by default. `--pattern REGEX` and `--tag fantasy|romance`
@@ -159,7 +164,7 @@ hand. It does not suggest ranges. Read the limitations at the top of
 
 ```bash
 ollama pull qwen3.5:4b   # once; the Ollama server must be running
-python judge.py --limit 20
+python -m storythread.judge --limit 20
 ```
 
 That judges the next 20 rows of `work/review.jsonl` (about 12 s per scene on
@@ -174,7 +179,7 @@ from it every run, so keep notes elsewhere. To start over, delete the two
 output files.
 
 To use another model, pull it and pass its Ollama name: `ollama pull <name>`,
-then `python judge.py --model <name>`. Use `--endpoint` for an Ollama server on
+then `python -m storythread.judge --model <name>`. Use `--endpoint` for an Ollama server on
 another machine. The model must support Ollama structured outputs. The script
 speaks only Ollama's `/api/chat`, so hosted models (Claude, GPT) are not
 supported.
@@ -220,7 +225,7 @@ for; check `skip_reason` before trusting a skip.
 `review_ui.py` serves one page for these decisions, on localhost:
 
 ```bash
-python review_ui.py
+python -m storythread.review_ui
 ```
 
 Open http://127.0.0.1:8765/. Paths default to `work/review.jsonl`,
@@ -266,7 +271,7 @@ turn.
 ## 4. Export the two datasets
 
 ```bash
-python data.py prepare work/pippa/pippa_deduped.jsonl work/review.jsonl \
+python -m storythread.data prepare work/pippa/pippa_deduped.jsonl work/review.jsonl \
   authored/scenes.jsonl work/datasets --valid-share 0.1 --authored-share 0.25
 ```
 
@@ -279,8 +284,8 @@ authored share, and any shortage of core examples.
 ## 5. Tokenizer preflight and the sequence cap
 
 ```bash
-python runtime.py check-data --data work/datasets/recent --max-tokens 512 --report-only
-python runtime.py check-data --data work/datasets/earlier --max-tokens 512 --report-only
+python -m storythread.runtime check-data --data work/datasets/recent --max-tokens 512 --report-only
+python -m storythread.runtime check-data --data work/datasets/earlier --max-tokens 512 --report-only
 ```
 
 Reports input, target-reply, and full-example token counts, and (for authored
@@ -299,8 +304,8 @@ Smoke test (tiny `smoke-data/`, 512 tokens, 10 updates):
 
 ```bash
 mkdir -p runs
-python runtime.py check-data --data smoke-data --max-tokens 512
-python runtime.py train -- --config smoke.yaml
+python -m storythread.runtime check-data --data smoke-data --max-tokens 512
+python -m storythread.runtime train -- --config smoke.yaml
 ```
 
 `runtime.py train` runs `mlx_lm.lora` unchanged and also writes
@@ -310,9 +315,9 @@ Probe real long examples at each candidate cap. Close other apps first:
 
 ```bash
 for CAP in 1024 2048; do
-  python runtime.py probe --data work/datasets/recent --target-tokens $CAP \
+  python -m storythread.runtime probe --data work/datasets/recent --target-tokens $CAP \
     --count 4 --output work/probe-$CAP
-  python runtime.py train -- --config smoke.yaml --data work/probe-$CAP \
+  python -m storythread.runtime train -- --config smoke.yaml --data work/probe-$CAP \
     --max-seq-length $CAP --iters 5 --adapter-path runs/probe-$CAP
   cat runs/probe-$CAP/train_metrics.json
 done
@@ -333,8 +338,8 @@ LoRA rank 8, 4 adapted blocks, learning rate 1e-4, 100 updates):
 ```bash
 CAP=1024   # the verified cap from step 6
 for ARM in recent earlier; do
-  python runtime.py check-data --data work/datasets/$ARM --max-tokens $CAP
-  python runtime.py train -- --config pilot.yaml --data work/datasets/$ARM \
+  python -m storythread.runtime check-data --data work/datasets/$ARM --max-tokens $CAP
+  python -m storythread.runtime train -- --config pilot.yaml --data work/datasets/$ARM \
     --adapter-path runs/pilot-$ARM --max-seq-length $CAP
 done
 ```
@@ -351,12 +356,12 @@ Each scenario has two versions where one earlier event differs, the final user
 prompt is identical, and the expected reply changes.
 
 ```bash
-python eval.py validate eval/dev.jsonl eval/test.jsonl   # schema + dev/test disjoint
+python -m storythread.eval validate eval/dev.jsonl eval/test.jsonl   # schema + dev/test disjoint
 mkdir -p work/eval
-python eval.py generate --label base eval/test.jsonl work/eval/base.jsonl
-python eval.py generate --label recent --adapter runs/pilot-recent \
+python -m storythread.eval generate --label base eval/test.jsonl work/eval/base.jsonl
+python -m storythread.eval generate --label recent --adapter runs/pilot-recent \
   eval/test.jsonl work/eval/recent.jsonl
-python eval.py generate --label earlier --adapter runs/pilot-earlier \
+python -m storythread.eval generate --label earlier --adapter runs/pilot-earlier \
   eval/test.jsonl work/eval/earlier.jsonl
 ```
 
@@ -367,11 +372,11 @@ Output rows record the case-file hash so the frozen test set is verifiable.
 correct story state in both versions.
 
 ```bash
-python eval.py sheet eval/test.jsonl work/eval/sheet.jsonl work/eval/key.jsonl \
+python -m storythread.eval sheet eval/test.jsonl work/eval/sheet.jsonl work/eval/key.jsonl \
   --outputs work/eval/base.jsonl work/eval/recent.jsonl work/eval/earlier.jsonl
 # Reviewer: in sheet.jsonl set "satisfies": true/false on every reply, judging
 # it against "expected" and "evidence". In-character paraphrases count.
-python eval.py continuity eval/test.jsonl work/eval/sheet.jsonl work/eval/key.jsonl \
+python -m storythread.eval continuity eval/test.jsonl work/eval/sheet.jsonl work/eval/key.jsonl \
   > work/eval/continuity.json
 ```
 
@@ -384,10 +389,10 @@ satisfied, for single versions, and for each evidence-distance bucket
 you rather keep chatting with?"
 
 ```bash
-python eval.py blind eval/test.jsonl work/eval/base.jsonl work/eval/recent.jsonl \
+python -m storythread.eval blind eval/test.jsonl work/eval/base.jsonl work/eval/recent.jsonl \
   work/eval/blind-base-recent.jsonl work/eval/blind-base-recent-key.jsonl
 # Reviewer: set "winner" to A, B, or tie. Repeat for base/earlier, recent/earlier.
-python eval.py score work/eval/blind-base-recent.jsonl work/eval/blind-base-recent-key.jsonl
+python -m storythread.eval score work/eval/blind-base-recent.jsonl work/eval/blind-base-recent-key.jsonl
 ```
 
 ## 9. Schemas and outputs
@@ -458,9 +463,9 @@ four authored scenes, and separate dev and test eval sets. Run it:
 
 ```bash
 python -m unittest discover tests
-python data.py prepare fixtures/pippa-sample.jsonl fixtures/review.jsonl \
+python -m storythread.data prepare fixtures/pippa-sample.jsonl fixtures/review.jsonl \
   fixtures/authored.jsonl /tmp/fixture-datasets --valid-share 0.25 --seed 3
-python eval.py validate fixtures/eval-dev.jsonl fixtures/eval-test.jsonl
+python -m storythread.eval validate fixtures/eval-dev.jsonl fixtures/eval-test.jsonl
 ```
 
 The tests cover export, preflight, sheet generation, scoring, and the local

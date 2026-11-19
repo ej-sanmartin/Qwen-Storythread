@@ -6,7 +6,7 @@ from pathlib import Path
 import statistics
 import sys
 
-from data import rows, write_rows
+from .data import rows, write_rows
 
 DEFAULT_MODEL = "models/qwen35-4b-q4"
 DEFAULT_REPO = "mlx-community/Qwen3.5-4B-4bit"

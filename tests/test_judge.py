@@ -14,8 +14,8 @@ import unittest
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, ROOT.as_posix())
 
-import judge  # noqa: E402
-from data import rows, write_rows  # noqa: E402
+from storythread import judge  # noqa: E402
+from storythread.data import rows, write_rows  # noqa: E402
 from test_fixture import FIXTURES, FakeTokenizer, run  # noqa: E402
 
 CAP = 100000
@@ -102,7 +102,7 @@ class JudgeTest(unittest.TestCase):
         cls.dir = tempfile.TemporaryDirectory()
         cls.tmp = Path(cls.dir.name)
         cls.index = cls.tmp / "index.jsonl"
-        run("data.py", "index", FIXTURES / "pippa-sample.jsonl", cls.index)
+        run("data", "index", FIXTURES / "pippa-sample.jsonl", cls.index)
         cls.review = FIXTURES / "review.jsonl"
         cls.scenes = {s["scene_id"]: s for s in rows(cls.index)}
         cls.server = FakeOllama()

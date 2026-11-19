@@ -3,7 +3,7 @@
 Serves one HTML page on 127.0.0.1. Decisions are written back to the review
 file; data.py prepare still selects rows with approved true.
 
-Run: python review_ui.py
+Run: python -m storythread.review_ui
 """
 import argparse
 import json
@@ -14,7 +14,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
-from data import rows
+from .data import rows
 
 HOST = "127.0.0.1"
 PORT = 8765

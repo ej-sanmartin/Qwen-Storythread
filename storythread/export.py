@@ -2,9 +2,9 @@
 import json
 from pathlib import Path
 
-from data import fingerprint, write_rows
-from scenarios import BRANCHES
-from splits import assign_splits, digest
+from .data import fingerprint, write_rows
+from .scenarios import BRANCHES
+from .splits import assign_splits, digest
 
 SPLITS = ("train", "valid")
 

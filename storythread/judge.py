@@ -50,8 +50,8 @@ import sys
 import urllib.error
 import urllib.request
 
-from data import clean, rows
-import runtime
+from . import runtime
+from .data import clean, rows
 
 DEFAULT_MODEL = "qwen3.5:4b"
 DEFAULT_ENDPOINT = "http://127.0.0.1:11434"

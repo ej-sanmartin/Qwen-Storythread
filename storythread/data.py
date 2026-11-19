@@ -125,8 +125,8 @@ def show(args):
 
 def prepare(args):
     """Exports recent/ and earlier/ datasets from approved review rows."""
-    from export import build
-    from scenarios import parse_authored
+    from .export import build
+    from .scenarios import parse_authored
 
     review = {}
     for row in rows(args.review):

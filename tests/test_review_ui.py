@@ -16,8 +16,8 @@ import unittest
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, ROOT.as_posix())
 
-import review_ui  # noqa: E402
-from data import rows  # noqa: E402
+from storythread import review_ui  # noqa: E402
+from storythread.data import rows  # noqa: E402
 from test_fixture import FIXTURES, run  # noqa: E402
 
 PENDING = "8f071e62285ca8d51b34be3e21a76b70ddb89816d5a4d2b00ce4371e834301bf"
@@ -43,7 +43,7 @@ class ReviewUiTest(unittest.TestCase):
         self.review = self.root / "review.jsonl"
         self.index = self.root / "index.jsonl"
         self.suggestions = self.root / "suggestions.jsonl"
-        run("data.py", "index", FIXTURES / "pippa-sample.jsonl", self.index)
+        run("data", "index", FIXTURES / "pippa-sample.jsonl", self.index)
         shutil.copyfile(FIXTURES / "review.jsonl", self.review)
         rows = [
             suggestion("qwen", 6, 0, 7, "First judge."),
@@ -201,7 +201,7 @@ class ReviewUiTest(unittest.TestCase):
         self.assertEqual(untouched[1], before[1])
 
         out = self.root / "datasets"
-        run("data.py", "prepare", FIXTURES / "pippa-sample.jsonl", self.review,
+        run("data", "prepare", FIXTURES / "pippa-sample.jsonl", self.review,
             FIXTURES / "authored.jsonl", out, "--valid-share", "0.25",
             "--authored-share", "0.01", "--seed", "3")
         manifest = [row for row in rows(out / "recent" / "manifest.jsonl")
