@@ -2,6 +2,28 @@
 
 Reads the index and review files, joins them by scene_id, and writes
 suggestions only. Approvals and final ranges stay in review.jsonl, by hand.
+
+LIMITATIONS - read before trusting any output
+- Quality depends on the judge model. This was built and checked against
+  qwen3.5:4b only. On the first 20 scenes it proposed 19, gave 7-8 to a
+  screaming loop and to a reply that grabs the player, and its totals sit near
+  7. A larger model may separate scenes better; no other model is tested.
+- The prompt and schema are tuned to that model: decision last (decision first
+  made it skip all 6 test scenes), reply_turn instead of an exclusive end (it
+  miscounted end in 3 of 6 ranges), temperature 0, think off. Other models may
+  need changes. One without structured outputs or the think option may return
+  failed rows; failed rows are retried on the next run.
+- Scores are the model's opinion on a 0-2 scale and are not calibrated. Compare
+  totals only within one judge_model, never across models.
+- Only the newest turns that fit --num-ctx are shown (about 3 characters per
+  token), so long scenes are judged on their tail (see shown_from). A range
+  that reaches before the shown turns is not rejected.
+- Python checks structure only: bounds, final roles, score values, token cap.
+  It cannot tell whether a keep_reason or concern is true, a skip is fair, or
+  content is acceptable. A model's own content policy may skip or penalize
+  mature scenes that the rubric allows.
+- Token counts use the tokenizer and the review row's card at judging time.
+- One greedy sample per scene; there is no second opinion or self-check.
 """
 import argparse
 import csv
