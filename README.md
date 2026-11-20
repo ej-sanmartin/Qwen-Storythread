@@ -232,6 +232,8 @@ Open http://127.0.0.1:8765/. Paths default to `work/review.jsonl`,
 `work/index.jsonl`, and `work/review_suggestions.jsonl`. `--port` changes
 8765.
 
+![Review page with the queue beside one scene.](docs/review-ui.png)
+
 The queue opens on pending rows. Click a column heading to sort. Names come
 from the index. When the suggestions file has that scene, the row shows the
 latest scored total and its suggested `start`/`end`.
