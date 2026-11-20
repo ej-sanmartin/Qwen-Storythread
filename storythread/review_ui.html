@@ -170,7 +170,7 @@
 </head>
 <body>
 <header class="top">
-  <h1>Storythread review</h1>
+  <h1>Storythread Review</h1>
   <button type="button" id="theme" aria-label="Toggle light and dark mode">
     Dark
   </button>
@@ -531,7 +531,7 @@ function showQueue() {
   $("editor").hidden = true;
   $("empty").hidden = false;
   $("empty").textContent = "Select a scene.";
-  document.title = "Storythread review";
+  document.title = "Storythread Review";
   renderQueue();
 }
 
@@ -570,7 +570,7 @@ async function openScene(id) {
   status.className = "status " + scene.status;
   $("group").textContent = scene.group || "(none)";
   $("scene-id").textContent = scene.scene_id;
-  document.title = (scene.name || "Scene") + " · Storythread review";
+  document.title = (scene.name || "Scene") + " · Storythread Review";
   $("system").value = scene.system || "";
   $("start").value = Number.isInteger(scene.start) ? String(scene.start) : "";
   $("end").value = Number.isInteger(scene.end) ? String(scene.end) : "";
