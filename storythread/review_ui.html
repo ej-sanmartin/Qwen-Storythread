@@ -120,7 +120,21 @@
   #note.ok { color: var(--good); }
   .suggestion { border-top: 1px solid var(--line); padding: 0.5rem 0; }
   .suggestion h3 { margin: 0 0 0.3rem; font-size: 0.9rem; }
-  .suggestion p { margin: 0.2rem 0; color: var(--muted); }
+  .verdict { font-weight: 600; }
+  .verdict.proposed { color: var(--good); }
+  .verdict.skipped { color: var(--bad); }
+  .suggestion .flags { margin: 0.2rem 0; color: var(--muted); }
+  .note-line {
+    margin: 0.35rem 0; padding-left: 0.55rem;
+    border-left: 3px solid var(--line); color: var(--text);
+  }
+  .note-line b { font-weight: 600; }
+  .note-line.reason { border-color: var(--good); }
+  .note-line.reason b { color: var(--good); }
+  .note-line.concern { border-color: var(--warn); }
+  .note-line.concern b { color: var(--warn); }
+  .note-line.skip { border-color: var(--bad); }
+  .note-line.skip b { color: var(--bad); }
   .suggestion button { margin-top: 0.2rem; font-size: 0.85rem; }
   .chat-head {
     position: sticky; top: 0; z-index: 1;
@@ -473,21 +487,35 @@ function renderSuggestions() {
     block.className = "suggestion";
     const title = document.createElement("h3");
     const bits = [item.judge_model || "judge"];
-    if (item.status) bits.push(item.status);
     if (Number.isInteger(item.total)) bits.push("score " + item.total);
     if (Number.isInteger(item.start) && Number.isInteger(item.end)) {
       bits.push(item.start + "\u2013" + item.end);
     }
-    title.textContent = bits.join(" \u00b7 ");
+    title.append(bits.join(" \u00b7 "));
+    if (item.status) {
+      title.append(" \u00b7 ");
+      const verdict = document.createElement("span");
+      verdict.className = "verdict " + item.status;
+      verdict.textContent = item.status;
+      title.append(verdict);
+    }
     block.append(title);
-    ["keep_reason", "concern", "skip_reason"].forEach((key) => {
+    [
+      ["keep_reason", "reason", "reason"],
+      ["concern", "concern", "concern"],
+      ["skip_reason", "skip reason", "skip"],
+    ].forEach(([key, label, kind]) => {
       if (!item[key]) return;
       const paragraph = document.createElement("p");
-      paragraph.textContent = key.replace("_", " ") + ": " + item[key];
+      paragraph.className = "note-line " + kind;
+      const name = document.createElement("b");
+      name.textContent = label + ":";
+      paragraph.append(name, " " + item[key]);
       block.append(paragraph);
     });
     if (Array.isArray(item.flags) && item.flags.length) {
       const flags = document.createElement("p");
+      flags.className = "flags";
       flags.textContent = "flags: " + item.flags.join(", ");
       block.append(flags);
     }
