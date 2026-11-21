@@ -271,6 +271,17 @@ recent evidence, the other on earlier evidence. `earlier` must be farther from
 the reply than `recent`. `evidence` is a quote that must appear in the cited
 turn.
 
+### Local authoring UI
+
+`author_ui.py` serves one page for writing these scenes, on localhost:
+
+```bash
+python -m storythread.author_ui
+```
+
+Open http://127.0.0.1:8766/. The file defaults to `authored/scenes.jsonl`.
+`--port` changes 8766.
+
 ## 4. Export the two datasets
 
 ```bash
@@ -471,14 +482,15 @@ python -m storythread.data prepare fixtures/pippa-sample.jsonl fixtures/review.j
 python -m storythread.eval validate fixtures/eval-dev.jsonl fixtures/eval-test.jsonl
 ```
 
-The tests cover export, preflight, sheet generation, scoring, and the local
-review page. Model generation is replaced by synthetic outputs, and reviewer
-ratings are scripted.
+The tests cover export, preflight, sheet generation, scoring, the local
+review page, and the local authoring page. Model generation is replaced by
+synthetic outputs, and reviewer ratings are scripted.
 
 | Check | Status |
 |---|---|
 | Export: shared core, equal counts, 25% authored, split integrity, manifest evidence/branch | Verified on fixture |
 | Review UI: decision survives reload; prepare still reads `approved` | Verified on fixture |
+| Author UI: a scene saved in the editor exports into both arms | Verified on fixture |
 | Preflight measurement and flags (fake tokenizer in tests; Qwen3.5-4B tokenizer and chat template checked by hand on the fixture export) | Verified |
 | Eval validation, blind sheet, continuity scoring with distance buckets, engagement scoring | Verified on fixture |
 | 512-token smoke run (`runtime.py train -- --config smoke.yaml`) | Needs local Apple Silicon run |
