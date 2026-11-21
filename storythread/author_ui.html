@@ -22,112 +22,160 @@
     --info: #60a5fa;
   }
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
   html, body { background: var(--bg); color: var(--text); }
   body {
     margin: 0; height: 100vh; display: flex; flex-direction: column;
     font: 15px/1.45 system-ui, sans-serif;
   }
   h1 { margin: 0; font-size: 1rem; }
-  h2 { margin: 0 0 0.4rem; font-size: 1rem; }
-  h3 { margin: 0 0 0.4rem; font-size: 1rem; }
+  h2 { margin: 0 0 0.4rem; font-size: 1.05rem; }
+  h3 { margin: 0.9rem 0 0.3rem; font-size: 0.95rem; }
   button, input, select, textarea {
     color: inherit; background: var(--bg); border: 1px solid var(--line);
     border-radius: 6px; font: inherit;
   }
-  button { cursor: pointer; }
+  button { cursor: pointer; padding: 0.35rem 0.7rem; }
   button:disabled { opacity: 0.5; cursor: default; }
+  button.primary { background: var(--accent); color: var(--on-accent); }
   .top {
     display: flex; justify-content: space-between; align-items: center;
     padding: 0.6rem 0.9rem; border-bottom: 1px solid var(--line);
   }
   #theme { padding: 0.2rem 0.6rem; font-size: 0.85rem; }
-  .panes { flex: 1; display: flex; min-height: 0; }
-  aside.list {
-    width: 16rem; flex: none; display: flex; flex-direction: column;
-    border-right: 1px solid var(--line); min-height: 0;
+  .hint { color: var(--muted); font-size: 0.85rem; font-weight: 400;
+    margin: 0.2rem 0; }
+  .hint.bad, .bad-text { color: var(--bad); font-weight: 600; }
+  .page { flex: 1; min-height: 0; overflow: auto; padding: 1rem 1.2rem; }
+  .bar { display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap; }
+  .bar h2 { margin: 0; }
+  table { width: 100%; border-collapse: collapse; margin-top: 0.8rem; }
+  th, td {
+    text-align: left; padding: 0.5rem 0.6rem;
+    border-bottom: 1px solid var(--line);
   }
-  .tools {
-    display: flex; gap: 0.6rem; align-items: center;
-    padding: 0.6rem 0.7rem; border-bottom: 1px solid var(--line);
+  th { color: var(--muted); font-size: 0.85rem; font-weight: 600; }
+  td a { font: 0.9rem ui-monospace, monospace; color: var(--text); }
+  tr.row { cursor: pointer; }
+  tr.row:hover { background: var(--select); }
+  .badge { color: var(--warn); font-size: 0.85rem; }
+  #list-error { color: var(--bad); }
+  #edit { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .toolbar {
+    display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap;
+    padding: 0.5rem 0.9rem; border-bottom: 1px solid var(--line);
   }
-  .tools button { padding: 0.35rem 0.6rem; }
-  #count { margin: 0; color: var(--muted); }
-  #scenes {
-    list-style: none; margin: 0; padding: 0; overflow: auto; flex: 1;
+  .toolbar a { color: var(--text); }
+  .toolbar .title {
+    font: 0.95rem ui-monospace, monospace; overflow-wrap: anywhere;
   }
-  #scenes button {
-    display: flex; flex-direction: column; width: 100%; text-align: left;
-    border: 0; border-radius: 0; border-bottom: 1px solid var(--line);
-    background: transparent; padding: 0.45rem 0.7rem;
+  .toolbar .grow { flex: 1; }
+  .toolbar label {
+    display: flex; align-items: center; gap: 0.35rem; margin: 0;
+    font-weight: 400;
   }
-  #scenes button.selected { background: var(--select); }
-  .sid {
-    font-family: ui-monospace, monospace; font-size: 0.85rem;
-    overflow-wrap: anywhere;
+  #cap { width: 5.5rem; padding: 0.3rem; }
+  #state.ok { color: var(--good); }
+  #tokens { padding: 0 0.9rem; }
+  #tokens p { margin: 0.25rem 0; font-size: 0.88rem; }
+  .cols { flex: 1; min-height: 0; display: flex; }
+  #chat { flex: 1; min-width: 0; overflow: auto; padding: 0.8rem 1.1rem 2rem; }
+  #side {
+    width: 23rem; flex: none; overflow: auto; padding: 0.9rem 1rem;
+    border-left: 1px solid var(--line);
   }
-  .group { color: var(--muted); font-size: 0.8rem; }
-  .work { flex: 1; min-width: 0; display: flex; min-height: 0; }
-  #empty { margin: 0; padding: 1rem; color: var(--muted); }
-  #editor {
-    flex: 1; min-width: 0; overflow: auto;
-    padding: 0.9rem 1.1rem 1.4rem;
+  .card {
+    border: 1px dashed var(--mark); border-radius: 10px; cursor: pointer;
+    padding: 0.5rem 0.8rem; margin-bottom: 0.4rem;
   }
-  #checks {
-    width: 18rem; flex: none; overflow: auto;
-    border-left: 1px solid var(--line); padding: 0.9rem 1rem;
+  .card p {
+    margin: 0.2rem 0 0; color: var(--muted); white-space: pre-wrap;
+    overflow-wrap: anywhere; display: -webkit-box; overflow: hidden;
+    -webkit-line-clamp: 4; -webkit-box-orient: vertical;
   }
-  label { display: block; margin: 0.7rem 0 0.25rem; font-weight: 600; }
-  label span { display: block; margin-bottom: 0.2rem; }
-  input[type="text"], textarea, select { width: 100%; padding: 0.35rem; }
-  textarea { min-height: 2.4rem; }
-  .hint { color: var(--muted); font-weight: 400; }
-  .turn {
-    display: grid; grid-template-columns: 2rem 7.2rem minmax(0, 1fr) auto auto;
-    gap: 0.35rem; align-items: start; margin: 0.35rem 0;
+  .log { display: flex; flex-direction: column; }
+  .msg { display: flex; flex-direction: column; max-width: 78%; }
+  .log .msg { cursor: pointer; }
+  .msg.assistant { align-self: flex-start; align-items: flex-start; }
+  .msg.user { align-self: flex-end; align-items: flex-end; }
+  .meta {
+    display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap;
+    font-size: 0.72rem; color: var(--muted); margin: 0.55rem 0.4rem 0.15rem;
   }
-  .num {
-    font: 13px ui-monospace, monospace; padding-top: 0.45rem;
+  .bubble {
+    margin: 0; padding: 0.5rem 0.8rem; border-radius: 16px;
+    white-space: pre-wrap; overflow-wrap: anywhere; background: var(--surface);
   }
-  .turn select, .turn button { width: auto; }
-  .turn button, .actions button, .ending button {
-    padding: 0.35rem 0.55rem;
+  .msg.assistant .bubble { border-bottom-left-radius: 4px; }
+  .msg.user .bubble {
+    background: var(--accent); color: var(--on-accent);
+    border-bottom-right-radius: 4px;
+  }
+  .bubble.empty { font-style: italic; opacity: 0.6; }
+  mark {
+    background: none; color: inherit; text-decoration: underline;
+    text-decoration-thickness: 2px; text-underline-offset: 3px;
+  }
+  mark.recent { text-decoration-color: #38bdf8; }
+  mark.earlier { text-decoration-color: #f59e0b; }
+  .chip { padding: 0 0.4rem; border-radius: 999px; font-weight: 600; }
+  .chip.recent { background: #38bdf8; color: #082f49; }
+  .chip.earlier { background: #f59e0b; color: #451a03; }
+  .add-turn { margin: 0.6rem 0 0; }
+  .edge {
+    display: flex; align-items: center; gap: 0.6rem; margin: 1.2rem 0 0.4rem;
+    font-size: 0.78rem; color: var(--muted);
+  }
+  .edge::before, .edge::after {
+    content: ""; flex: 1; border-top: 1px dashed var(--mark);
   }
   .endings {
     display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem;
-    align-items: start; margin-top: 0.6rem;
+    align-items: start;
   }
   .ending {
-    border: 1px solid var(--line); border-radius: 8px; padding: 0.7rem;
+    border: 1px solid var(--line); border-radius: 10px; cursor: pointer;
+    padding: 0.5rem 0.7rem 0.7rem; display: flex; flex-direction: column;
   }
+  .ending h3 { margin: 0.2rem 0 0; }
+  .ending .msg { max-width: 94%; }
   .ending.missing { border-color: var(--bad); }
+  .ev { margin: 0.6rem 0 0; font-size: 0.82rem; color: var(--muted); }
+  .msg.sel .bubble, .card.sel, .ending.sel {
+    outline: 2px solid var(--info); outline-offset: 2px;
+  }
+  .ending.sel .bubble { outline: 0; }
+  .msg.bad .bubble, .card.bad, .ending.bad {
+    outline: 2px solid var(--bad); outline-offset: 2px;
+  }
+  label { display: block; margin: 0.7rem 0 0.25rem; font-weight: 600; }
+  label > span { display: block; margin-bottom: 0.2rem; }
+  input[type="text"], textarea, select { width: 100%; padding: 0.35rem; }
+  textarea { min-height: 2.6rem; resize: vertical; }
+  .btns { display: flex; gap: 0.4rem; flex-wrap: wrap; margin: 0.5rem 0; }
   .preview {
-    min-height: 3rem; margin: 0.35rem 0; padding: 0.45rem 0.6rem;
+    min-height: 2.4rem; margin: 0.35rem 0; padding: 0.45rem 0.6rem;
     white-space: pre-wrap; overflow-wrap: anywhere;
     background: var(--surface); border-radius: 6px;
   }
-  .distance { margin: 0.35rem 0 0; }
-  .distance.bad { color: var(--bad); font-weight: 600; }
-  .actions {
-    display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: end;
-    margin: 0.9rem 0 0.4rem;
+  #problems {
+    border: 1px solid var(--bad); border-radius: 8px;
+    padding: 0.2rem 0.7rem 0.6rem; margin-bottom: 0.8rem;
   }
-  .actions label { margin: 0; }
-  #cap { width: 6rem; }
-  #save { background: var(--accent); color: var(--on-accent); }
-  #tokens { margin: 0.4rem 0 0; }
-  #tokens p { margin: 0.2rem 0; }
-  #status { min-height: 1.2rem; margin: 0 0 0.4rem; }
-  #status.ok { color: var(--good); }
-  #problems { margin: 0; padding-left: 1.1rem; color: var(--bad); }
-  #problems li.ok { color: var(--good); }
-  @media (max-width: 980px) {
-    .work { flex-direction: column; }
-    #checks { width: auto; border-left: 0; border-top: 1px solid var(--line); }
+  #problems h3 { margin: 0.4rem 0; color: var(--bad); }
+  #problems ul { margin: 0; padding-left: 1.1rem; color: var(--bad); }
+  #problems button {
+    background: none; border: 0; padding: 0; text-align: left;
+    color: var(--bad); text-decoration: underline;
   }
-  @media (max-width: 800px) {
-    .panes { flex-direction: column; overflow: auto; }
-    aside.list { width: auto; max-height: 16rem; }
-    .endings, .turn { grid-template-columns: 1fr; }
+  @media (max-width: 900px) {
+    .cols { flex-direction: column; overflow: auto; }
+    #chat { flex: none; overflow: visible; }
+    #side {
+      width: auto; overflow: visible; border-left: 0;
+      border-top: 1px solid var(--line);
+    }
+    .endings { grid-template-columns: 1fr; }
   }
 </style>
 </head>
@@ -136,224 +184,97 @@
   <h1>Storythread Author</h1>
   <button type="button" id="theme">Dark</button>
 </header>
-<div class="panes">
-  <aside class="list">
-    <div class="tools">
-      <button type="button" id="new">New scene</button>
-      <p id="count">0 saved</p>
-    </div>
-    <ul id="scenes"></ul>
-  </aside>
-  <div class="work">
-    <p id="empty">Choose a saved scene or start a new one.</p>
-    <section id="editor" hidden>
-      <label><span>scenario_id</span>
-        <input id="scenario_id" type="text" autocomplete="off">
-      </label>
-      <label><span>group</span>
-        <input id="group" type="text" autocomplete="off">
-      </label>
-      <label><span>Character card</span>
-        <textarea id="system" rows="3"></textarea>
-      </label>
-      <h2>Shared history</h2>
-      <p class="hint">
-        Turn numbers match evidence_turn. The card is not a turn.
-      </p>
-      <div id="history"></div>
-      <button type="button" id="add-turn">Add turn</button>
-      <div id="endings" class="endings"></div>
-      <div class="actions">
-        <button type="button" id="save">Save</button>
-        <button type="button" id="discard">Discard unsaved</button>
-        <label><span>Token cap</span>
-          <input id="cap" type="number" min="1" step="1" value="512">
-        </label>
-        <button type="button" id="check">Check token counts</button>
-      </div>
-      <div id="tokens"></div>
-    </section>
-    <aside id="checks" hidden>
-      <h2>Checks</h2>
-      <p id="status"></p>
-      <ul id="problems"></ul>
+<main id="list-page" class="page">
+  <div class="bar">
+    <h2>Scenes</h2>
+    <span id="count" class="hint"></span>
+    <button type="button" id="new" class="primary">New scene</button>
+  </div>
+  <p id="list-error"></p>
+  <table>
+    <thead>
+      <tr><th>Scene</th><th>Group</th><th>Turns</th><th></th></tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+  <p id="list-empty" class="hint" hidden>
+    No scenes yet. Press New scene to write your first pair.
+  </p>
+</main>
+<div id="edit" hidden>
+  <div class="toolbar">
+    <a href="/">&larr; Scenes</a>
+    <span id="title" class="title"></span>
+    <span id="state" class="hint"></span>
+    <span class="grow"></span>
+    <label>Token cap
+      <input id="cap" type="number" min="1" step="1" value="512">
+    </label>
+    <button type="button" id="check">Check token counts</button>
+    <button type="button" id="discard">Discard changes</button>
+    <button type="button" id="save" class="primary">Save</button>
+  </div>
+  <div id="tokens"></div>
+  <div class="cols">
+    <section id="chat" aria-label="Story"></section>
+    <aside id="side">
+      <div id="problems" hidden></div>
+      <div id="fields"></div>
     </aside>
   </div>
 </div>
 <script>
 const $ = (id) => document.getElementById(id);
-const DRAFT_KEY = "storythread-author-draft";
+const DRAFTS = "storythread-author-drafts-v2";
+const NAMES = ["recent", "earlier"];
+const TITLE = {recent: "Recent evidence", earlier: "Earlier evidence"};
+const HINT = {
+  recent: "The reply depends on something said a few turns ago.",
+  earlier: "The reply depends on something said much further back.",
+};
+const SPEAKER = {assistant: "Character", user: "Player"};
+const HEADERS = {"Content-Type": "application/json"};
 let scenes = [];
 let state = null;
-let keyCounter = 1;
+let ui = {selected: "scene", showErrors: false, serverError: "", note: ""};
 
-// Returns the next stable id for a history turn.
-function mintKey() {
-  keyCounter += 1;
-  return "t" + keyCounter;
+// Builds an element. attrs: class, text, onX handlers, or plain attributes.
+function el(tag, attrs = {}, ...kids) {
+  const node = document.createElement(tag);
+  Object.entries(attrs).forEach(([key, val]) => {
+    if (val == null || val === false) return;
+    if (key === "class") node.className = val;
+    else if (key === "text") node.textContent = val;
+    else if (key.startsWith("on")) node.addEventListener(key.slice(2), val);
+    else node.setAttribute(key, val === true ? "" : val);
+  });
+  node.append(...kids.filter((kid) => kid != null && kid !== false));
+  return node;
 }
 
-// Returns an empty evidence ending.
-function blankBranch() {
-  return {
-    user: "", reply: "", evidence: "", source: null, missing: false,
-  };
+// Returns "1 turn" or "N turns".
+function plural(count) {
+  return count + (count === 1 ? " turn" : " turns");
 }
 
-// Returns a new unsaved scene with one assistant turn.
-function blankScene() {
-  const saved = Number(localStorage.getItem("author-cap"));
-  return {
-    originalId: null,
-    scenario_id: "",
-    group: "",
-    system: "",
-    history: [{key: mintKey(), role: "assistant", content: ""}],
-    branches: {recent: blankBranch(), earlier: blankBranch()},
-    cap: Number.isInteger(saved) && saved > 0 ? saved : 512,
-    dirty: false,
-    keyCounter: keyCounter,
-  };
+// Returns a short single-line preview of turn text.
+function snippet(text) {
+  const flat = text.trim().replace(/\s+/g, " ");
+  if (!flat) return "(empty)";
+  return flat.length > 28 ? flat.slice(0, 28) + "\u2026" : flat;
 }
 
-// Returns one ending, citing a history key or this ending's user turn.
-function branchFrom(row, name, history) {
-  const raw = (row.branches && row.branches[name]) || {};
-  const index = raw.evidence_turn;
-  let source = null;
-  let missing = false;
-  if (index === history.length) source = "self";
-  else if (Number.isInteger(index) && history[index]) {
-    source = history[index].key;
-  } else if (Number.isInteger(index)) missing = true;
-  return {
-    user: raw.user || "",
-    reply: raw.reply || "",
-    evidence: typeof raw.evidence === "string" ? raw.evidence : "",
-    source: source,
-    missing: missing,
-  };
+// Returns the other speaker.
+function opposite(role) {
+  return role === "assistant" ? "user" : "assistant";
 }
 
-// Returns editor state for a row loaded from the server.
-function fromServer(row) {
-  const history = (row.history || []).map((turn) => ({
-    key: mintKey(),
-    role: turn.role || "assistant",
-    content: turn.content || "",
-  }));
-  const saved = Number(localStorage.getItem("author-cap"));
-  return {
-    originalId: row.scenario_id,
-    scenario_id: row.scenario_id || "",
-    group: row.group || "",
-    system: row.system || "",
-    history: history,
-    branches: {
-      recent: branchFrom(row, "recent", history),
-      earlier: branchFrom(row, "earlier", history),
-    },
-    cap: Number.isInteger(saved) && saved > 0 ? saved : 512,
-    dirty: false,
-    keyCounter: keyCounter,
-  };
+// Returns a stable id for a history turn, so citations follow the turn.
+function newKey() {
+  return "t" + Math.random().toString(36).slice(2, 9);
 }
 
-// Returns the localStorage key for the open scene.
-function draftKey() {
-  return state && state.originalId ? state.originalId : "new";
-}
-
-// Returns the saved draft map, or an empty one.
-function readDrafts() {
-  try {
-    const data = JSON.parse(localStorage.getItem(DRAFT_KEY) || "");
-    if (data && data.items) return data;
-  } catch (error) {
-    // A damaged draft store is ignored.
-  }
-  return {items: {}};
-}
-
-// Returns the draft for key, or null when it is unusable.
-function loadDraft(key) {
-  const draft = readDrafts().items[key];
-  if (!draft || !Array.isArray(draft.history)) return null;
-  if (!draft.branches) return null;
-  return draft;
-}
-
-// Stores the open scene so a refresh can restore it.
-function persist() {
-  if (!state) return;
-  try {
-    const all = readDrafts();
-    state.keyCounter = keyCounter;
-    all.items[draftKey()] = snapshot();
-    all.active = draftKey();
-    localStorage.setItem(DRAFT_KEY, JSON.stringify(all));
-  } catch (error) {
-    state.serverError = "Could not store unsaved edits in this browser.";
-    renderErrors();
-  }
-}
-
-// Drops one draft key after a save or discard.
-function dropDraft(key) {
-  const all = readDrafts();
-  delete all.items[key];
-  localStorage.setItem(DRAFT_KEY, JSON.stringify(all));
-}
-
-// Moves a draft when a new scene receives its id.
-function retargetDraft(oldKey) {
-  const all = readDrafts();
-  state.keyCounter = keyCounter;
-  if (oldKey !== draftKey()) delete all.items[oldKey];
-  all.items[draftKey()] = snapshot();
-  all.active = draftKey();
-  localStorage.setItem(DRAFT_KEY, JSON.stringify(all));
-}
-
-// Returns the fields that survive a refresh.
-function snapshot() {
-  return {
-    originalId: state.originalId,
-    scenario_id: state.scenario_id,
-    group: state.group,
-    system: state.system,
-    history: state.history,
-    branches: state.branches,
-    cap: state.cap,
-    dirty: state.dirty,
-    keyCounter: keyCounter,
-  };
-}
-
-// Shows scene as the open editor. restored marks a reload of a draft.
-function adopt(scene, restored) {
-  keyCounter = scene.keyCounter || keyCounter;
-  state = scene;
-  state.serverError = "";
-  state.savedNote = restored && scene.dirty ? "Restored unsaved edits." : "";
-  document.title = (state.scenario_id || "New scene")
-    + " · Storythread Author";
-  render();
-}
-
-// Marks the editor dirty, stores it, and refreshes the checks.
-function touch() {
-  if (!state) return;
-  state.dirty = true;
-  state.savedNote = "";
-  state.serverError = "";
-  persist();
-  renderStatus();
-  renderErrors();
-  clearTokens();
-}
-
-// Returns JSON or throws the server error string.
+// Returns parsed JSON or throws the server's error text.
 async function readJson(response) {
   let payload = {};
   try {
@@ -365,673 +286,794 @@ async function readJson(response) {
   return payload;
 }
 
-// Fills the saved-scene list and the count.
-async function loadList() {
-  scenes = await readJson(await fetch("/api/scenes"));
-  $("count").textContent = scenes.length + " saved";
-  const list = $("scenes");
-  list.replaceChildren();
-  scenes.forEach((item) => {
-    const li = document.createElement("li");
-    const button = document.createElement("button");
-    button.type = "button";
-    button.dataset.id = item.scenario_id;
-    const id = document.createElement("span");
-    id.className = "sid";
-    id.textContent = item.scenario_id || "(untitled)";
-    const group = document.createElement("span");
-    group.className = "group";
-    group.textContent = item.group || "";
-    button.append(id, group);
-    li.append(button);
-    list.append(li);
-  });
-  markSelected();
+// ---- Drafts: unfinished work survives a refresh -------------------------
+
+function readDrafts() {
+  try {
+    const data = JSON.parse(localStorage.getItem(DRAFTS) || "");
+    if (data && data.items) return data;
+  } catch (error) {
+    // A damaged draft store is ignored.
+  }
+  return {items: {}};
 }
 
-// Highlights the open saved scene in the list.
-function markSelected() {
-  const id = state && state.originalId;
-  document.querySelectorAll("#scenes button").forEach((button) => {
-    button.classList.toggle("selected", button.dataset.id === id);
-  });
+function writeDrafts(data) {
+  localStorage.setItem(DRAFTS, JSON.stringify(data));
 }
 
-// Hides the editor until a scene is chosen.
-function showEmpty() {
-  state = null;
-  $("editor").hidden = true;
-  $("checks").hidden = true;
-  $("empty").hidden = false;
-  $("empty").textContent = "Choose a saved scene or start a new one.";
-  document.title = "Storythread Author";
-  markSelected();
+// Returns the draft slot for the open scene.
+function draftKey() {
+  return state.originalId || "new";
 }
 
-// Copies identity fields from state into the form.
-function fillIdentity() {
-  $("scenario_id").value = state.scenario_id;
-  $("group").value = state.group;
-  $("system").value = state.system;
-  $("cap").value = String(state.cap);
+// Returns the usable draft for key, or null.
+function loadDraft(key) {
+  const draft = readDrafts().items[key];
+  const ok = draft && Array.isArray(draft.history) && draft.branches;
+  return ok ? draft : null;
 }
 
-// Rebuilds the numbered history controls from state.
-function renderHistory() {
-  const root = $("history");
-  root.replaceChildren();
-  state.history.forEach((turn, index) => {
-    const row = document.createElement("div");
-    row.className = "turn";
-    row.dataset.key = turn.key;
-    const num = document.createElement("span");
-    num.className = "num";
-    num.textContent = String(index);
-    const role = document.createElement("select");
-    role.dataset.field = "role";
-    ["assistant", "user"].forEach((name) => {
-      const option = document.createElement("option");
-      option.value = name;
-      option.textContent = name;
-      if (name === turn.role) option.selected = true;
-      role.append(option);
-    });
-    const content = document.createElement("textarea");
-    content.dataset.field = "content";
-    content.rows = 2;
-    content.value = turn.content;
-    const add = document.createElement("button");
-    add.type = "button";
-    add.dataset.action = "add-above";
-    add.textContent = "Add above";
-    const remove = document.createElement("button");
-    remove.type = "button";
-    remove.dataset.action = "remove";
-    remove.textContent = "Remove";
-    row.append(num, role, content, add, remove);
-    root.append(row);
-  });
+// Stores the open scene so a refresh can restore it.
+function persist() {
+  try {
+    const data = readDrafts();
+    data.items[draftKey()] = {
+      originalId: state.originalId, scenario_id: state.scenario_id,
+      group: state.group, system: state.system, history: state.history,
+      branches: state.branches, dirty: true,
+    };
+    writeDrafts(data);
+  } catch (error) {
+    ui.serverError = "Could not keep unsaved edits in this browser.";
+  }
 }
 
-// Returns a labeled textarea bound to field.
-function field(label, name, value) {
-  const wrap = document.createElement("label");
-  const span = document.createElement("span");
-  span.textContent = label;
-  const input = document.createElement("textarea");
-  input.dataset.field = name;
-  input.rows = name === "evidence" ? 2 : 3;
-  input.value = value;
-  wrap.append(span, input);
-  return wrap;
+function dropDraft(key) {
+  const data = readDrafts();
+  delete data.items[key];
+  writeDrafts(data);
 }
 
-// Rebuilds the two ending cards from state.
-function renderBranches() {
-  const root = $("endings");
-  root.replaceChildren();
-  [
-    ["recent", "Recent evidence"],
-    ["earlier", "Earlier evidence"],
-  ].forEach(([name, title]) => {
-    const branch = state.branches[name];
-    const card = document.createElement("section");
-    card.className = "ending";
-    card.dataset.branch = name;
-    const heading = document.createElement("h3");
-    heading.textContent = title;
-    const source = document.createElement("label");
-    const sourceText = document.createElement("span");
-    sourceText.textContent = "Evidence turn";
-    const select = document.createElement("select");
-    select.dataset.field = "source";
-    source.append(sourceText, select);
-    const preview = document.createElement("p");
-    preview.className = "preview";
-    preview.dataset.preview = name;
-    const copy = document.createElement("button");
-    copy.type = "button";
-    copy.dataset.action = "copy";
-    copy.textContent = "Copy selection";
-    const distance = document.createElement("p");
-    distance.className = "distance";
-    distance.dataset.distance = name;
-    card.append(
-      heading,
-      field("Final user turn", "user", branch.user),
-      field("Ideal character reply", "reply", branch.reply),
-      source, preview, copy,
-      field("Evidence quote", "evidence", branch.evidence),
-      distance);
-    root.append(card);
-  });
-  fillSources();
+// ---- Scene state --------------------------------------------------------
+
+function blankBranch() {
+  return {user: "", reply: "", evidence: "", source: null, missing: false};
 }
 
-// Returns a select option.
-function option(value, text) {
-  const item = document.createElement("option");
-  item.value = value;
-  item.textContent = text;
-  return item;
+// Returns the next unused scene-N id.
+function nextId() {
+  const used = new Set(scenes.map((item) => item.scenario_id));
+  let number = scenes.length + 1;
+  while (used.has("scene-" + number)) number += 1;
+  return "scene-" + number;
 }
 
-// Refills both evidence dropdowns without moving their citations.
-function fillSources() {
-  ["recent", "earlier"].forEach((name) => {
-    const branch = state.branches[name];
-    const select = document.querySelector(
-      '[data-branch="' + name + '"] [data-field="source"]');
-    const value = branch.missing ? "" : (branch.source || "");
-    select.replaceChildren();
-    select.append(option("", branch.missing
-      ? "Cited turn was removed" : "Choose a turn"));
-    state.history.forEach((turn, index) => {
-      select.append(option(turn.key, index + " · " + turn.role));
-    });
-    const own = state.history.length + " · this ending's user turn";
-    select.append(option("self", own));
-    select.value = value;
-    refreshBranch(name);
-  });
+// Returns a new scene with a generated id and a three-turn start.
+function blankScene() {
+  return {
+    originalId: null, scenario_id: nextId(), group: "", system: "",
+    history: ["assistant", "user", "assistant"].map((role) => (
+      {key: newKey(), role: role, content: ""})),
+    branches: {recent: blankBranch(), earlier: blankBranch()},
+    dirty: false,
+  };
 }
 
-// Returns the history index a citation still points at, or null.
+// Returns one ending; evidence_turn becomes a turn key or "self".
+function branchFrom(row, name, turns) {
+  const raw = (row.branches && row.branches[name]) || {};
+  const index = raw.evidence_turn;
+  let source = null;
+  let missing = false;
+  if (index === turns.length) source = "self";
+  else if (Number.isInteger(index) && turns[index]) source = turns[index].key;
+  else if (Number.isInteger(index)) missing = true;
+  return {
+    user: raw.user || "", reply: raw.reply || "",
+    evidence: typeof raw.evidence === "string" ? raw.evidence : "",
+    source: source, missing: missing,
+  };
+}
+
+// Returns editor state for a row loaded from the server.
+function fromServer(row) {
+  const turns = (row.history || []).map((turn) => ({
+    key: newKey(), role: turn.role || "assistant",
+    content: turn.content || "",
+  }));
+  return {
+    originalId: row.scenario_id, scenario_id: row.scenario_id || "",
+    group: row.group || "", system: row.system || "", history: turns,
+    branches: {
+      recent: branchFrom(row, "recent", turns),
+      earlier: branchFrom(row, "earlier", turns),
+    },
+    dirty: false,
+  };
+}
+
+// Returns the history index an ending cites, or null.
 function evidenceIndex(branch) {
-  if (!branch || branch.missing || !branch.source) return null;
+  if (!branch.source || branch.missing) return null;
   if (branch.source === "self") return state.history.length;
-  const index = state.history.findIndex((turn) => turn.key === branch.source);
+  const index = state.history.findIndex((t) => t.key === branch.source);
   return index < 0 ? null : index;
 }
 
-// Returns the text of the cited turn, or the ending's own user turn.
-function citedText(branch) {
-  if (!branch || branch.missing || !branch.source) return "";
-  if (branch.source === "self") return branch.user;
-  const turn = state.history.find((item) => item.key === branch.source);
-  return turn ? turn.content : "";
-}
-
-// Updates one ending's preview, distance, and removed-turn flag.
-function refreshBranch(name) {
-  const branch = state.branches[name];
-  const card = document.querySelector('[data-branch="' + name + '"]');
-  card.classList.toggle("missing", branch.missing);
-  const blank = card.querySelector('[data-field="source"] option');
-  if (blank) {
-    blank.textContent = branch.missing
-      ? "Cited turn was removed" : "Choose a turn";
-  }
-  const preview = card.querySelector("[data-preview]");
-  preview.textContent = branch.missing ? "" : citedText(branch);
-  const distance = card.querySelector("[data-distance]");
-  if (branch.missing) {
-    distance.textContent = "Cited turn was removed.";
-    distance.className = "distance bad";
-    return;
-  }
+// Returns how many turns the cited turn sits from the final reply.
+function turnsBack(branch) {
   const index = evidenceIndex(branch);
-  if (index === null) {
-    distance.textContent = "Choose the turn this reply depends on.";
-    distance.className = "distance hint";
-    return;
-  }
-  const turns = state.history.length + 1 - index;
-  const noun = turns === 1 ? "turn" : "turns";
-  distance.textContent = turns + " " + noun
-    + " from this turn to the final reply.";
-  distance.className = "distance hint";
+  return index === null ? null : state.history.length + 1 - index;
 }
 
-// Returns the quote highlighted inside preview, or "".
-function selectedQuote(preview) {
-  const sel = window.getSelection();
-  if (!sel || !sel.rangeCount || sel.isCollapsed) return "";
-  const node = sel.getRangeAt(0).commonAncestorContainer;
-  if (!preview.contains(node)) return "";
-  return sel.toString();
-}
-
-// Copies the highlighted evidence text into that ending's quote.
-function copySelection(name) {
-  const card = document.querySelector('[data-branch="' + name + '"]');
-  const quote = selectedQuote(card.querySelector("[data-preview]"));
-  if (!quote.trim()) {
-    state.serverError = "Select a quote in the evidence turn first.";
-    renderErrors();
-    return;
-  }
-  state.branches[name].evidence = quote;
-  card.querySelector('[data-field="evidence"]').value = quote;
-  state.serverError = "";
-  touch();
-}
-
-// Returns live validation messages for the open scene.
-function problems() {
-  const found = [];
-  if (!state.scenario_id.trim()) found.push("scenario_id is empty.");
-  if (!state.group.trim()) found.push("group is empty.");
-  if (!state.system.trim()) found.push("Character card is empty.");
-  if (!state.history.length) {
-    found.push("History needs at least one turn.");
-  } else {
-    state.history.forEach((turn, index) => {
-      const where = "Turn " + index;
-      if (turn.role !== "user" && turn.role !== "assistant") {
-        found.push(where + ": role must be user or assistant.");
-      } else if (index > 0 && turn.role === state.history[index - 1].role) {
-        found.push(where + ": roles must alternate.");
-      }
-      if (!String(turn.content || "").trim()) {
-        found.push(where + ": text is empty.");
-      }
-    });
-    const last = state.history[state.history.length - 1];
-    if (last.role !== "assistant") {
-      found.push("History must end with an assistant turn.");
-    }
-  }
-  const distance = {};
-  ["recent", "earlier"].forEach((name) => {
-    const branch = state.branches[name];
-    const label = name === "recent" ? "Recent" : "Earlier";
-    if (!branch.user.trim()) found.push(label + ": final user turn is empty.");
-    if (!branch.reply.trim()) {
-      found.push(label + ": ideal reply is empty.");
-    }
-    if (branch.missing) found.push(label + ": cited turn was removed.");
-    else if (!branch.source) found.push(label + ": choose an evidence turn.");
-    if (!String(branch.evidence || "").trim()) {
-      found.push(label + ": evidence quote is empty.");
-    } else if (branch.source && !branch.missing) {
-      const host = citedText(branch);
-      if (!host.includes(branch.evidence) ||
-          !host.trim().includes(branch.evidence)) {
-        found.push(label + ": evidence quote is not in the selected turn.");
-      }
-    }
-    distance[name] = evidenceIndex(branch);
-  });
-  if (distance.recent !== null && distance.earlier !== null) {
-    const recent = state.history.length + 1 - distance.recent;
-    const earlier = state.history.length + 1 - distance.earlier;
-    if (earlier <= recent) {
-      found.push(
-        "Earlier evidence must be farther from the reply than recent.");
-    }
-  }
-  return found;
-}
-
-// Draws validation errors in the panel beside the editor.
-function renderErrors() {
-  const list = $("problems");
-  list.replaceChildren();
-  const items = state ? problems() : [];
-  if (state && state.serverError && !items.includes(state.serverError)) {
-    items.unshift(state.serverError);
-  }
-  if (!items.length) {
-    const ok = document.createElement("li");
-    ok.className = "ok";
-    ok.textContent = "No problems.";
-    list.append(ok);
-    return;
-  }
-  items.forEach((text) => {
-    const li = document.createElement("li");
-    li.textContent = text;
-    list.append(li);
-  });
-}
-
-// Shows the saved or restored note above the checks.
-function renderStatus() {
-  const note = $("status");
-  const text = state && state.savedNote || "";
-  note.textContent = text;
-  note.className = text.startsWith("Saved") ? "ok" : "hint";
-}
-
-// Clears a stale token report.
-function clearTokens() {
-  $("tokens").replaceChildren();
-}
-
-// Shows preflight counts and flags for both endings.
-function renderTokens(report) {
-  const root = $("tokens");
-  root.replaceChildren();
-  ["recent", "earlier"].forEach((name) => {
-    const info = report[name];
-    const flags = info.flags.length ? info.flags.join(", ") : "none";
-    const line = document.createElement("p");
-    line.textContent = name + ": " + info.full + " full (" + info.input
-      + " input, " + info.target + " reply), " + info.distance_turns
-      + " turns, evidence " + info.evidence_distance_tokens
-      + " tokens, flags: " + flags;
-    root.append(line);
-  });
-}
-
-// Draws the open scene.
-function render() {
-  fillIdentity();
-  renderHistory();
-  renderBranches();
-  renderStatus();
-  renderErrors();
-  $("editor").hidden = false;
-  $("checks").hidden = false;
-  $("empty").hidden = true;
-  markSelected();
+// Returns the cited turn's text, or the ending's own user turn.
+function citedText(branch) {
+  if (!branch.source || branch.missing) return "";
+  if (branch.source === "self") return branch.user;
+  const turn = state.history.find((t) => t.key === branch.source);
+  return turn ? turn.content : "";
 }
 
 // Returns the scene in the authored file shape.
 function payload() {
-  function branch(name) {
+  const branch = (name) => {
     const item = state.branches[name];
     return {
-      user: item.user,
-      reply: item.reply,
-      evidence_turn: evidenceIndex(item),
-      evidence: item.evidence,
+      user: item.user, reply: item.reply,
+      evidence_turn: evidenceIndex(item), evidence: item.evidence,
     };
-  }
+  };
   return {
-    scenario_id: state.scenario_id,
-    group: state.group,
+    scenario_id: state.scenario_id, group: state.group,
     system: state.system,
-    history: state.history.map((turn) => ({
-      role: turn.role, content: turn.content,
-    })),
+    history: state.history.map((t) => ({role: t.role, content: t.content})),
     branches: {recent: branch("recent"), earlier: branch("earlier")},
   };
 }
 
-// Applies stripped server text without detaching citation keys.
-function applySavedText(scene) {
-  (scene.history || []).forEach((turn, index) => {
-    if (!state.history[index]) return;
-    state.history[index].role = turn.role;
-    state.history[index].content = turn.content;
+// ---- Validation: only shown after Save is pressed -----------------------
+
+// Returns [{text, target}] for everything wrong with the open scene.
+function problems() {
+  const out = [];
+  const add = (text, target) => out.push({text: text, target: target});
+  const turns = state.history;
+  if (!state.scenario_id.trim()) add("scenario_id is empty.", "scene");
+  if (!state.group.trim()) add("group is empty.", "scene");
+  if (!state.system.trim()) add("Character card is empty.", "scene");
+  if (!turns.length) add("The story needs at least one turn.", "scene");
+  turns.forEach((turn, i) => {
+    const target = "turn:" + turn.key;
+    if (i > 0 && turn.role === turns[i - 1].role) {
+      add(`Turn ${i} has the same speaker as turn ${i - 1}.`, target);
+    }
+    if (!turn.content.trim()) add(`Turn ${i} is empty.`, target);
   });
-  ["recent", "earlier"].forEach((name) => {
-    const raw = scene.branches[name];
-    const branch = state.branches[name];
-    branch.user = raw.user;
-    branch.reply = raw.reply;
-    branch.evidence = raw.evidence || "";
+  const last = turns[turns.length - 1];
+  if (last && last.role !== "assistant") {
+    add("The story must end with a Character turn.", "turn:" + last.key);
+  }
+  const back = {};
+  NAMES.forEach((name) => {
+    const b = state.branches[name];
+    const target = "ending:" + name;
+    const label = TITLE[name];
+    if (!b.user.trim()) add(`${label}: final user turn is empty.`, target);
+    if (!b.reply.trim()) add(`${label}: ideal reply is empty.`, target);
+    if (b.missing) add(`${label}: cited turn was removed.`, target);
+    else if (!b.source) add(`${label}: choose an evidence turn.`, target);
+    if (!b.evidence.trim()) {
+      add(`${label}: evidence quote is empty.`, target);
+    } else if (b.source && !b.missing &&
+               !citedText(b).trim().includes(b.evidence)) {
+      add(`${label}: evidence quote is not in the cited turn.`, target);
+    }
+    back[name] = turnsBack(b);
+  });
+  if (back.recent !== null && back.earlier !== null &&
+      back.earlier <= back.recent) {
+    add("Earlier evidence must be farther from the reply than recent " +
+        "evidence.", "ending:earlier");
+  }
+  return out;
+}
+
+// Draws the problems box. Empty until Save has been pressed once.
+function renderProblems() {
+  const list = ui.showErrors ? problems() : [];
+  if (ui.serverError) list.unshift({text: ui.serverError, target: null});
+  const box = $("problems");
+  box.hidden = !list.length;
+  box.replaceChildren();
+  if (list.length) {
+    box.append(el("h3", {text: "Problems"}), el("ul", {}, ...list.map((p) => (
+      el("li", {}, p.target ? el("button", {
+        type: "button", text: p.text, onclick: () => select(p.target),
+      }) : p.text)))));
+  }
+  markBad();
+}
+
+function renderStatus() {
+  const note = $("state");
+  note.textContent = ui.note || (state.dirty ? "Unsaved changes" : "");
+  note.className = ui.note.startsWith("Saved") ? "ok" : "hint";
+  $("title").textContent = state.scenario_id || "New scene";
+  document.title = (state.scenario_id || "New scene") +
+    " \u00b7 Storythread Author";
+}
+
+// Marks the scene changed, stores a draft, and refreshes the chrome.
+function touch() {
+  state.dirty = true;
+  ui.note = "";
+  ui.serverError = "";
+  persist();
+  renderStatus();
+  renderProblems();
+  $("tokens").replaceChildren();
+}
+
+// ---- Chat ---------------------------------------------------------------
+
+// Returns {turn key or "self": [{name, quote}]} for both endings.
+function citations() {
+  const map = {};
+  NAMES.forEach((name) => {
+    const b = state.branches[name];
+    if (!b.source || b.missing) return;
+    (map[b.source] = map[b.source] || []).push({name: name, quote: b.evidence});
+  });
+  return map;
+}
+
+// Writes text into p, underlining each cited quote.
+function richText(p, text, cites) {
+  const spans = [];
+  cites.forEach((cite) => {
+    const at = cite.quote ? text.indexOf(cite.quote) : -1;
+    if (at >= 0) spans.push({at: at, end: at + cite.quote.length, name: cite.name});
+  });
+  spans.sort((a, b) => a.at - b.at);
+  let pos = 0;
+  spans.forEach((span) => {
+    if (span.at < pos) return;
+    p.append(text.slice(pos, span.at),
+             el("mark", {class: span.name, text: text.slice(span.at, span.end)}));
+    pos = span.end;
+  });
+  p.append(text.slice(pos));
+}
+
+// Returns one chat bubble with its speaker line and evidence chips.
+function bubble(role, label, text, cites, target) {
+  const meta = el("div", {class: "meta"}, el("b", {text: label}));
+  cites.forEach((cite) => meta.append(el("span", {
+    class: "chip " + cite.name,
+    text: `${TITLE[cite.name]} \u00b7 ${plural(cite.back)} back`,
+  })));
+  const empty = !text.trim();
+  const p = el("p", {class: "bubble" + (empty ? " empty" : "")});
+  if (empty) p.textContent = "(empty)";
+  else richText(p, text, cites);
+  return el("div", {class: "msg " + role, "data-target": target}, meta, p);
+}
+
+function cardView() {
+  return el("div", {class: "card", "data-target": "scene"},
+    el("b", {text: "Character card"}),
+    el("span", {
+      class: "hint",
+      text: ` \u00b7 ${state.scenario_id || "no id"} \u00b7 group ` +
+        (state.group || "\u2014"),
+    }),
+    el("p", {text: state.system.trim() || "(empty)"}));
+}
+
+function endingView(name) {
+  const b = state.branches[name];
+  const index = evidenceIndex(b);
+  const own = b.source === "self" && !b.missing
+    ? [{name: name, quote: b.evidence, back: 1}] : [];
+  let line = "Evidence: not chosen yet";
+  if (b.missing) line = "Cited turn was removed.";
+  else if (index !== null) {
+    const where = index === state.history.length
+      ? "this ending's user turn" : "turn " + index;
+    line = `Evidence: ${where} \u00b7 ${plural(turnsBack(b))} back`;
+  }
+  return el("section", {
+    class: "ending" + (b.missing ? " missing" : ""),
+    "data-target": "ending:" + name,
+  },
+    el("h3", {text: TITLE[name]}), el("p", {class: "hint", text: HINT[name]}),
+    bubble("user", "Player \u00b7 final turn", b.user, own, null),
+    bubble("assistant", "Character \u00b7 ideal reply", b.reply, [], null),
+    el("p", {class: "ev" + (b.missing ? " bad-text" : ""), text: line}));
+}
+
+// Rebuilds the whole chat from state.
+function renderChat() {
+  const cites = citations();
+  const total = state.history.length;
+  const log = el("div", {class: "log"}, ...state.history.map((turn, i) => {
+    const mine = (cites[turn.key] || []).map(
+      (cite) => ({...cite, back: total + 1 - i}));
+    return bubble(turn.role, `${i} \u00b7 ${SPEAKER[turn.role] || turn.role}`,
+                  turn.content, mine, "turn:" + turn.key);
+  }));
+  $("chat").replaceChildren(
+    cardView(), log,
+    el("button", {type: "button", class: "add-turn", text: "Add turn",
+                  onclick: addTurn}),
+    el("div", {class: "edge", text: "Two endings to the same story"}),
+    el("div", {class: "endings"}, ...NAMES.map(endingView)));
+  markSelected();
+  markBad();
+}
+
+function markSelected() {
+  document.querySelectorAll("#chat [data-target]").forEach((node) => {
+    node.classList.toggle("sel", node.dataset.target === ui.selected);
   });
 }
 
-// Inserts a turn before key. Citations stay on their original turns.
-function insertBefore(key) {
-  const index = state.history.findIndex((turn) => turn.key === key);
-  if (index < 0) return;
-  const prev = state.history[index - 1];
-  const role = prev && prev.role === "assistant" ? "user" : "assistant";
-  state.history.splice(index, 0, {key: mintKey(), role: role, content: ""});
-  renderHistory();
-  fillSources();
+function markBad() {
+  const bad = new Set(ui.showErrors ? problems().map((p) => p.target) : []);
+  document.querySelectorAll("#chat [data-target]").forEach((node) => {
+    node.classList.toggle("bad", bad.has(node.dataset.target));
+  });
+}
+
+// Opens target ("scene", "turn:<key>", "ending:<name>") in the sidebar.
+function select(target) {
+  ui.selected = target;
+  renderFields();
+  const node = document.querySelector(`#chat [data-target="${target}"]`);
+  if (node) node.scrollIntoView({block: "nearest"});
+}
+
+// ---- Sidebar ------------------------------------------------------------
+
+// Returns a labeled input (rows = 0) or textarea bound to set().
+function field({label, value, set, hint, rows = 0, id}) {
+  const control = rows
+    ? el("textarea", {rows: rows, id: id})
+    : el("input", {type: "text", id: id, autocomplete: "off"});
+  control.value = value;
+  control.addEventListener("input", () => {
+    set(control.value);
+    touch();
+    renderChat();
+  });
+  return el("label", {}, el("span", {text: label}), control,
+            hint ? el("span", {class: "hint", text: hint}) : null);
+}
+
+function sceneFields() {
+  return [
+    el("h2", {text: "Scene"}),
+    field({label: "scenario_id", value: state.scenario_id,
+           set: (v) => { state.scenario_id = v; },
+           hint: "A unique label for this scene. Rename it if you like."}),
+    field({label: "group", value: state.group,
+           set: (v) => { state.group = v; },
+           hint: "Scenes of one character or world share a group, so they " +
+             "stay together in the train/valid split."}),
+    field({label: "Character card", value: state.system, rows: 6,
+           set: (v) => { state.system = v; },
+           hint: "The system prompt both endings are trained with."}),
+  ];
+}
+
+// Returns the current highlighted text for the selected bubble or textarea.
+function selectedText() {
+  const area = $("turn-text");
+  if (area && document.activeElement === area &&
+      area.selectionStart !== area.selectionEnd) {
+    return area.value.slice(area.selectionStart, area.selectionEnd);
+  }
+  const sel = window.getSelection();
+  if (!sel || !sel.rangeCount || sel.isCollapsed) return "";
+  const node = sel.getRangeAt(0).commonAncestorContainer;
+  const host = (node.nodeType === 1 ? node : node.parentElement)
+    .closest("[data-target]");
+  return host && host.dataset.target === ui.selected ? sel.toString() : "";
+}
+
+// Makes the highlighted words of turn the evidence for an ending.
+function useAsEvidence(name, turn, note) {
+  const quote = selectedText().trim();
+  if (!quote) {
+    note.textContent = "Highlight some words in this turn first.";
+    return;
+  }
+  const b = state.branches[name];
+  b.source = turn.key;
+  b.missing = false;
+  b.evidence = quote;
   touch();
+  renderChat();
+  renderFields();
 }
 
-// Removes a turn and flags endings that cited it.
+function insertTurn(index, role) {
+  const turn = {key: newKey(), role: role, content: ""};
+  state.history.splice(index, 0, turn);
+  ui.selected = "turn:" + turn.key;
+  touch();
+  renderChat();
+  renderFields();
+}
+
+function addTurn() {
+  const last = state.history[state.history.length - 1];
+  insertTurn(state.history.length, last ? opposite(last.role) : "assistant");
+}
+
+// Removes a turn. Endings that cited it keep their quote but are flagged.
 function removeTurn(key) {
-  const index = state.history.findIndex((turn) => turn.key === key);
+  const index = state.history.findIndex((t) => t.key === key);
   if (index < 0) return;
   state.history.splice(index, 1);
-  ["recent", "earlier"].forEach((name) => {
-    const branch = state.branches[name];
-    if (branch.source === key) {
-      branch.source = null;
-      branch.missing = true;
+  NAMES.forEach((name) => {
+    const b = state.branches[name];
+    if (b.source === key) {
+      b.source = null;
+      b.missing = true;
     }
   });
-  renderHistory();
-  fillSources();
+  const near = state.history[Math.max(0, index - 1)];
+  ui.selected = near ? "turn:" + near.key : "scene";
   touch();
+  renderChat();
+  renderFields();
 }
 
-// Appends one alternating turn.
-function addTurn() {
-  const prev = state.history[state.history.length - 1];
-  const role = prev && prev.role === "assistant" ? "user" : "assistant";
-  state.history.push({key: mintKey(), role: role, content: ""});
-  renderHistory();
-  fillSources();
-  touch();
+function turnFields(i, turn) {
+  const note = el("p", {class: "hint"});
+  const role = el("select", {}, ...["assistant", "user"].map((r) => (
+    el("option", {value: r, text: `${SPEAKER[r]} (${r})`}))));
+  role.value = turn.role;
+  role.addEventListener("change", () => {
+    turn.role = role.value;
+    touch();
+    renderChat();
+  });
+  const cited = NAMES.filter((n) => state.branches[n].source === turn.key)
+    .map((n) => el("p", {
+      class: "hint",
+      text: `${TITLE[n]}: \u201c${state.branches[n].evidence}\u201d \u00b7 ` +
+        `${plural(turnsBack(state.branches[n]))} back`,
+    }));
+  const use = (name) => el("button", {
+    type: "button", "data-keepsel": true, text: `Use as ${name} evidence`,
+    onclick: () => useAsEvidence(name, turn, note),
+  });
+  return [
+    el("h2", {text: `Turn ${i}`}),
+    el("label", {}, el("span", {text: "Speaker"}), role),
+    field({label: "Text", value: turn.content, rows: 7, id: "turn-text",
+           set: (v) => { turn.content = v; }}),
+    el("div", {class: "btns"},
+      el("button", {type: "button", text: "Add turn above",
+                    onclick: () => insertTurn(i, opposite(turn.role))}),
+      el("button", {type: "button", text: "Add turn below",
+                    onclick: () => insertTurn(i + 1, opposite(turn.role))}),
+      el("button", {type: "button", text: "Remove turn",
+                    onclick: () => removeTurn(turn.key)})),
+    el("h3", {text: "Evidence"}),
+    el("p", {class: "hint",
+             text: "Highlight the words a later reply depends on, in the " +
+               "chat or in the box above, then choose the ending."}),
+    el("div", {class: "btns"}, use("recent"), use("earlier")),
+    note, ...cited,
+  ];
 }
 
-// Opens a saved scene, preferring its unfinished draft.
-async function openSaved(id, fromPop) {
-  if (state && state.dirty) persist();
-  const url = "/scene/" + encodeURIComponent(id);
-  if (!fromPop && decodeURIComponent(location.pathname) !== url) {
-    history.pushState({}, "", url);
+// Refills an ending's evidence dropdown from the current history.
+function fillSources(select, b) {
+  select.replaceChildren(
+    el("option", {value: "", text: "Choose a turn"}),
+    ...state.history.map((t, i) => el("option", {
+      value: t.key,
+      text: `${i} \u00b7 ${SPEAKER[t.role]} \u00b7 ${snippet(t.content)}`,
+    })),
+    el("option", {value: "self",
+                  text: `${state.history.length} \u00b7 this ending's user turn`}));
+  select.value = b.missing || !b.source ? "" : b.source;
+}
+
+// Updates an ending's cited text, distance, and removed-turn flag.
+function refreshEvidence(name) {
+  const b = state.branches[name];
+  const first = document.querySelector("#ev-select option");
+  first.textContent = b.missing ? "Cited turn was removed" : "Choose a turn";
+  $("ev-preview").textContent = b.missing ? "" : citedText(b);
+  const back = turnsBack(b);
+  const line = $("ev-distance");
+  line.className = "hint" + (b.missing ? " bad" : "");
+  if (b.missing) line.textContent = "Cited turn was removed.";
+  else if (back === null) line.textContent = "Choose the turn this reply uses.";
+  else line.textContent = `${plural(back)} from this turn to the final reply.`;
+}
+
+// Returns the highlighted text inside node, or "".
+function selectedIn(node) {
+  const sel = window.getSelection();
+  if (!sel || !sel.rangeCount || sel.isCollapsed) return "";
+  return node.contains(sel.getRangeAt(0).commonAncestorContainer)
+    ? sel.toString() : "";
+}
+
+function endingFields(name) {
+  const b = state.branches[name];
+  const picker = el("select", {id: "ev-select"});
+  fillSources(picker, b);
+  picker.addEventListener("change", () => {
+    b.source = picker.value || null;
+    b.missing = false;
+    touch();
+    refreshEvidence(name);
+    renderChat();
+  });
+  const preview = el("p", {class: "preview", id: "ev-preview"});
+  const note = el("p", {class: "hint"});
+  const copy = el("button", {
+    type: "button", "data-keepsel": true, text: "Copy selection to quote",
+    onclick: () => {
+      const quote = selectedIn(preview).trim();
+      if (!quote) {
+        note.textContent = "Highlight words in the cited text first.";
+        return;
+      }
+      note.textContent = "";
+      b.evidence = quote;
+      $("ev-quote").value = quote;
+      touch();
+      renderChat();
+    },
+  });
+  return [
+    el("h2", {text: TITLE[name]}),
+    el("p", {class: "hint", text: HINT[name]}),
+    field({label: "Final user turn", value: b.user, rows: 3,
+           set: (v) => { b.user = v; refreshEvidence(name); }}),
+    field({label: "Ideal character reply", value: b.reply, rows: 5,
+           set: (v) => { b.reply = v; }}),
+    el("h3", {text: "Evidence"}),
+    el("label", {}, el("span", {text: "Evidence turn"}), picker),
+    preview,
+    el("div", {class: "btns"}, copy), note,
+    el("p", {class: "hint", id: "ev-distance"}),
+    field({label: "Evidence quote", value: b.evidence, rows: 2,
+           id: "ev-quote",
+           set: (v) => { b.evidence = v; },
+           hint: "Exact words from the cited turn."}),
+  ];
+}
+
+// Redraws the sidebar for the current selection.
+function renderFields() {
+  const [kind, id] = ui.selected.split(":");
+  let kids = null;
+  if (kind === "turn") {
+    const i = state.history.findIndex((t) => t.key === id);
+    if (i >= 0) kids = turnFields(i, state.history[i]);
+  } else if (kind === "ending" && state.branches[id]) {
+    kids = endingFields(id);
   }
-  const draft = loadDraft(id);
-  if (draft) {
-    adopt(draft, true);
+  if (!kids) {
+    ui.selected = "scene";
+    kids = sceneFields();
+  }
+  $("fields").replaceChildren(...kids);
+  if (kind === "ending" && state.branches[id]) refreshEvidence(id);
+  markSelected();
+}
+
+// ---- Save, discard, and token check -------------------------------------
+
+// Copies the server's stripped text back, keeping turn keys.
+function applySaved(scene) {
+  state.scenario_id = scene.scenario_id;
+  state.group = scene.group;
+  state.system = scene.system;
+  scene.history.forEach((turn, i) => {
+    if (!state.history[i]) return;
+    state.history[i].role = turn.role;
+    state.history[i].content = turn.content;
+  });
+  NAMES.forEach((name) => {
+    const raw = scene.branches[name];
+    Object.assign(state.branches[name], {
+      user: raw.user, reply: raw.reply, evidence: raw.evidence || "",
+    });
+  });
+}
+
+// Checks the scene, then writes it. Other rows stay untouched.
+async function save() {
+  ui.showErrors = true;
+  ui.serverError = "";
+  ui.note = "";
+  renderStatus();
+  renderProblems();
+  if (problems().length) {
+    $("side").scrollTop = 0;
     return;
   }
-  try {
-    const row = await readJson(await fetch(
-      "/api/scenes/" + encodeURIComponent(id)));
-    adopt(fromServer(row), false);
-  } catch (error) {
-    showEmpty();
-    $("empty").textContent = error.message;
-  }
-}
-
-// Opens a new scene, or restores the unfinished one.
-function openNew(fromPop) {
-  if (state && state.dirty) persist();
-  if (!fromPop && location.pathname !== "/new") {
-    history.pushState({}, "", "/new");
-  }
-  const draft = loadDraft("new");
-  adopt(draft || blankScene(), Boolean(draft));
-}
-
-// Follows the URL after load or back/forward.
-function boot(fromPop) {
-  const path = decodeURIComponent(location.pathname);
-  if (path === "/new") return openNew(fromPop);
-  const prefix = "/scene/";
-  if (path.startsWith(prefix) && path.length > prefix.length) {
-    return openSaved(path.slice(prefix.length), fromPop);
-  }
-  if (state && state.dirty) persist();
-  showEmpty();
-}
-
-// Writes the open scene and leaves every other row untouched.
-async function saveScene() {
-  if (!state) return;
-  const creating = !state.originalId;
   const oldKey = draftKey();
-  const url = creating ? "/api/scenes"
-    : "/api/scenes/" + encodeURIComponent(state.originalId);
+  const url = state.originalId
+    ? "/api/scenes/" + encodeURIComponent(state.originalId) : "/api/scenes";
   $("save").disabled = true;
-  state.serverError = "";
   try {
     const body = await readJson(await fetch(url, {
-      method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify(payload()),
+      method: "POST", headers: HEADERS, body: JSON.stringify(payload()),
     }));
-    applySavedText(body.scene);
+    applySaved(body.scene);
     state.originalId = body.scene.scenario_id;
-    state.scenario_id = body.scene.scenario_id;
-    state.group = body.scene.group;
-    state.system = body.scene.system;
     state.dirty = false;
-    state.savedNote = "Saved " + state.originalId + ".";
-    state.serverError = "";
-    const next = "/scene/" + encodeURIComponent(state.originalId);
-    if (decodeURIComponent(location.pathname) !== next) {
-      history.pushState({}, "", next);
-    }
-    retargetDraft(oldKey);
+    ui.showErrors = false;
+    ui.note = "Saved " + state.originalId + ".";
+    dropDraft(oldKey);
+    dropDraft(state.originalId);
+    history.replaceState({}, "", "/scene/" + encodeURIComponent(state.originalId));
     await loadList();
-    render();
+    renderChat();
+    renderFields();
   } catch (error) {
-    state.serverError = error.message;
-    state.savedNote = "";
-    renderStatus();
-    renderErrors();
+    ui.serverError = error.message;
   } finally {
     $("save").disabled = false;
+    renderStatus();
+    renderProblems();
   }
 }
 
-// Drops the draft and reloads the saved row, or a blank scene.
-async function discardScene() {
+function discard() {
   if (!state) return;
-  const key = draftKey();
-  dropDraft(key);
-  if (!state.originalId) {
-    adopt(blankScene(), false);
-    return;
-  }
-  try {
-    const row = await readJson(await fetch(
-      "/api/scenes/" + encodeURIComponent(state.originalId)));
-    adopt(fromServer(row), false);
-  } catch (error) {
-    state.serverError = error.message;
-    renderErrors();
-  }
+  if (state.dirty && !confirm("Discard your unsaved changes?")) return;
+  dropDraft(draftKey());
+  location.reload();
 }
 
-// Measures both endings with the cap in the form.
+// Shows preflight counts and flags for both endings.
+function renderTokens(report) {
+  $("tokens").replaceChildren(...NAMES.map((name) => {
+    const info = report[name];
+    const flags = info.flags.length
+      ? "flags: " + info.flags.join(", ") : "no flags";
+    return el("p", {
+      class: info.flags.length ? "bad-text" : "",
+      text: `${TITLE[name]}: ${info.full} tokens (${info.input} in, ` +
+        `${info.target} reply) \u00b7 evidence ${plural(info.distance_turns)}` +
+        `, ${info.evidence_distance_tokens} tokens back \u00b7 ${flags}`,
+    });
+  }));
+}
+
+// Measures both endings against the cap in the toolbar.
 async function checkTokens() {
-  if (!state) return;
   const cap = Number($("cap").value);
   if (!Number.isInteger(cap) || cap < 1) {
-    state.serverError = "Token cap must be a positive integer.";
-    renderErrors();
+    ui.serverError = "Token cap must be a positive integer.";
+    renderProblems();
     return;
   }
-  state.cap = cap;
-  localStorage.setItem("author-cap", String(cap));
-  persist();
+  ui.serverError = "";
   $("check").disabled = true;
-  state.serverError = "";
   try {
     const report = await readJson(await fetch("/api/tokens", {
-      method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify(Object.assign({max_tokens: cap}, payload())),
+      method: "POST", headers: HEADERS,
+      body: JSON.stringify({max_tokens: cap, ...payload()}),
     }));
     renderTokens(report);
-    renderErrors();
   } catch (error) {
-    clearTokens();
-    state.serverError = error.message;
-    renderErrors();
+    $("tokens").replaceChildren();
+    ui.serverError = error.message;
   } finally {
     $("check").disabled = false;
+    renderProblems();
   }
 }
 
-// Updates one history turn and keeps citations on that same turn.
-function onHistoryInput(event) {
-  const row = event.target.closest("[data-key]");
-  if (!row || !state) return;
-  const turn = state.history.find((item) => item.key === row.dataset.key);
-  if (!turn) return;
-  const field = event.target.dataset.field;
-  if (field === "role") turn.role = event.target.value;
-  if (field === "content") turn.content = event.target.value;
-  fillSources();
-  touch();
+// ---- Pages --------------------------------------------------------------
+
+async function loadList() {
+  scenes = await readJson(await fetch("/api/scenes"));
 }
 
-// Adds or removes the history turn that was clicked.
-function onHistoryClick(event) {
-  const button = event.target.closest("button");
-  if (!button || !state) return;
-  const row = button.closest("[data-key]");
-  if (!row) return;
-  if (button.dataset.action === "add-above") insertBefore(row.dataset.key);
-  if (button.dataset.action === "remove") removeTurn(row.dataset.key);
+// Draws the saved-scene table, with unsaved drafts flagged.
+function renderList() {
+  const rows = [];
+  const fresh = loadDraft("new");
+  if (fresh) {
+    rows.push({id: fresh.scenario_id || "(new)", group: fresh.group,
+               turns: fresh.history.length, href: "/new",
+               status: "Unsaved new scene"});
+  }
+  scenes.forEach((item) => rows.push({
+    id: item.scenario_id, group: item.group, turns: item.turns,
+    href: "/scene/" + encodeURIComponent(item.scenario_id),
+    status: loadDraft(item.scenario_id) ? "Unsaved edits" : "",
+  }));
+  $("count").textContent = scenes.length + " saved";
+  $("list-empty").hidden = rows.length > 0;
+  $("rows").replaceChildren(...rows.map((row) => {
+    const tr = el("tr", {class: "row"},
+      el("td", {}, el("a", {href: row.href, text: row.id})),
+      el("td", {text: row.group}), el("td", {text: String(row.turns)}),
+      el("td", {class: "badge", text: row.status}));
+    tr.addEventListener("click", (event) => {
+      if (!event.target.closest("a")) location.href = row.href;
+    });
+    return tr;
+  }));
 }
 
-// Updates one ending field. A new choice clears a removed-turn flag.
-function onBranchInput(event) {
-  const card = event.target.closest("[data-branch]");
-  if (!card || !state) return;
-  const name = card.dataset.branch;
-  const branch = state.branches[name];
-  const field = event.target.dataset.field;
-  if (!field) return;
-  if (field === "source") {
-    branch.source = event.target.value || null;
-    branch.missing = false;
+// Opens the editor for a saved id, or a new scene when id is null.
+async function openEditor(id) {
+  const draft = loadDraft(id || "new");
+  if (draft) {
+    state = draft;
+    ui.note = "Restored your unsaved edits.";
+  } else if (id) {
+    state = fromServer(await readJson(
+      await fetch("/api/scenes/" + encodeURIComponent(id))));
   } else {
-    branch[field] = event.target.value;
+    state = blankScene();
   }
-  refreshBranch(name);
-  touch();
+  $("list-page").hidden = true;
+  $("edit").hidden = false;
+  const cap = Number(localStorage.getItem("author-cap"));
+  $("cap").value = Number.isInteger(cap) && cap > 0 ? cap : 512;
+  renderStatus();
+  renderChat();
+  renderFields();
+  renderProblems();
 }
 
-// Copies a selection when that ending's button is clicked.
-function onBranchClick(event) {
-  const button = event.target.closest("[data-action='copy']");
-  if (!button || !state) return;
-  const card = button.closest("[data-branch]");
-  if (card) copySelection(card.dataset.branch);
+async function boot() {
+  const path = decodeURIComponent(location.pathname);
+  try {
+    await loadList();
+    if (path === "/new") return await openEditor(null);
+    if (path.startsWith("/scene/") && path.length > 7) {
+      return await openEditor(path.slice(7));
+    }
+  } catch (error) {
+    $("list-error").textContent = error.message;
+  }
+  renderList();
 }
 
-// Stores the theme and updates the toggle label.
 function applyTheme(theme) {
   document.documentElement.dataset.theme = theme;
   $("theme").textContent = theme === "dark" ? "Light" : "Dark";
 }
 
-["scenario_id", "group", "system"].forEach((id) => {
-  $(id).addEventListener("input", () => {
-    if (!state) return;
-    state[id] = $(id).value;
-    touch();
-  });
-});
+$("new").addEventListener("click", () => { location.href = "/new"; });
+$("save").addEventListener("click", save);
+$("discard").addEventListener("click", discard);
+$("check").addEventListener("click", checkTokens);
 $("cap").addEventListener("input", () => {
-  if (!state) return;
   const cap = Number($("cap").value);
   if (Number.isInteger(cap) && cap > 0) {
-    state.cap = cap;
     localStorage.setItem("author-cap", String(cap));
   }
-  persist();
 });
-$("history").addEventListener("input", onHistoryInput);
-$("history").addEventListener("change", onHistoryInput);
-$("history").addEventListener("click", onHistoryClick);
-$("endings").addEventListener("input", onBranchInput);
-$("endings").addEventListener("change", onBranchInput);
-$("endings").addEventListener("click", onBranchClick);
-// Keep the highlighted quote when Copy selection is pressed.
-$("endings").addEventListener("mousedown", (event) => {
-  if (event.target.closest("[data-action='copy']")) event.preventDefault();
+$("chat").addEventListener("click", (event) => {
+  const host = event.target.closest("[data-target]");
+  // A bubble that is already open keeps the user's text highlight.
+  if (host && state && host.dataset.target !== ui.selected) {
+    select(host.dataset.target);
+  }
 });
-$("new").addEventListener("click", () => openNew(false));
-$("add-turn").addEventListener("click", addTurn);
-$("save").addEventListener("click", saveScene);
-$("discard").addEventListener("click", discardScene);
-$("check").addEventListener("click", checkTokens);
-$("scenes").addEventListener("click", (event) => {
-  const button = event.target.closest("button");
-  if (button && button.dataset.id) openSaved(button.dataset.id, false);
-});
-window.addEventListener("popstate", () => boot(true));
-window.addEventListener("pagehide", () => {
-  if (state && state.dirty) persist();
+// Keeps the highlighted words while a sidebar button is pressed.
+$("side").addEventListener("mousedown", (event) => {
+  if (event.target.closest("[data-keepsel]")) event.preventDefault();
 });
 const storedTheme = localStorage.getItem("author-theme");
 const systemTheme = matchMedia("(prefers-color-scheme: dark)").matches;
@@ -1042,9 +1084,7 @@ $("theme").addEventListener("click", () => {
   localStorage.setItem("author-theme", next);
   applyTheme(next);
 });
-loadList().then(() => boot(false)).catch((error) => {
-  $("empty").textContent = error.message;
-});
+boot();
 </script>
 </body>
 </html>

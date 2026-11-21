@@ -118,6 +118,7 @@ class AuthorUiTest(unittest.TestCase):
         self.assertEqual(
             [row["scenario_id"] for row in listed],
             ["salt-river", "glass-orchard", "signal-tower", "ink-market"])
+        self.assertEqual(listed[0]["turns"], 7)
         missing = self.request("GET", "/api/scenes/missing")
         self.assertEqual(missing[0], 404)
 

@@ -133,7 +133,7 @@ class Store:
         return read_lines(self.path)
 
     def list_scenes(self):
-        """Returns scenario_id and group for each row, in file order."""
+        """Returns scenario_id, group, and turn count per row, in file order."""
         with self.lock:
             if not self.path.is_file():
                 return []
@@ -147,10 +147,12 @@ class Store:
             if not isinstance(row, dict):
                 raise ValueError(
                     "Authored file has a line that is not an object.")
+            turns = row.get("history")
             items.append({
                 "order": order,
                 "scenario_id": row.get("scenario_id") or "",
                 "group": row.get("group") or "",
+                "turns": len(turns) if isinstance(turns, list) else 0,
             })
         return items
 
