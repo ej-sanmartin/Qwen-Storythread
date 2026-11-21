@@ -280,8 +280,9 @@ python -m storythread.author_ui
 ```
 
 Open http://127.0.0.1:8766/. The file defaults to `authored/scenes.jsonl`.
-`--port` changes 8766. The first page lists saved scenes; **New scene** opens
-an editor with a generated `scenario_id`. Click a chat bubble to edit it in
+`--port` changes 8766. The first page lists saved scenes. **Delete** on a
+row asks you to confirm in a dialog, then removes that scene. **New scene**
+opens an editor with a generated `scenario_id`. Click a chat bubble to edit it in
 the sidebar, and highlight words in a turn to use them as evidence. Checks run
 when you press Save.
 

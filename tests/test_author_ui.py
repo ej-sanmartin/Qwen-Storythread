@@ -111,6 +111,7 @@ class AuthorUiTest(unittest.TestCase):
             self.assertIn(b"Check token counts", body)
             self.assertIn(b"this ending's user turn", body)
             self.assertIn(b"Cited turn was removed", body)
+            self.assertIn(b"Are you sure you want to delete", body)
 
     def test_lists_saved_scenes(self):
         status, listed = self.request("GET", "/api/scenes")
@@ -121,6 +122,27 @@ class AuthorUiTest(unittest.TestCase):
         self.assertEqual(listed[0]["turns"], 7)
         missing = self.request("GET", "/api/scenes/missing")
         self.assertEqual(missing[0], 404)
+
+    def test_delete_removes_one_scene(self):
+        before = self.scenes.read_text(encoding="utf-8").splitlines()
+        status, body = self.request("DELETE", "/api/scenes/glass-orchard")
+        self.assertEqual(status, 200, body)
+        after = [
+            line for line in
+            self.scenes.read_text(encoding="utf-8").splitlines()
+            if line.strip()]
+        self.assertEqual(
+            [json.loads(line)["scenario_id"] for line in after],
+            ["salt-river", "signal-tower", "ink-market"])
+        self.assertEqual(after[0], before[0])
+        self.assertEqual(after[1:], before[2:])
+        again = self.request("DELETE", "/api/scenes/glass-orchard")
+        self.assertEqual(again[0], 404)
+        self.assertEqual(
+            [line for line in
+             self.scenes.read_text(encoding="utf-8").splitlines()
+             if line.strip()],
+            after)
 
     def test_rejects_invalid_scene_without_writing(self):
         original = self.scenes.read_bytes()

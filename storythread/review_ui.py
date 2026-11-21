@@ -21,9 +21,37 @@ PORT = 8765
 STATUSES = ("pending", "skipped", "approved")
 MAX_BODY = 2_000_000
 HTML = Path(__file__).with_name("review_ui.html")
+PAGE_STYLE = "review_ui.css"
+PAGE_SCRIPTS = ("review_ui_queue.js", "review_ui_scene.js")
 SUGGESTION_KEYS = (
     "judge_model", "status", "total", "start", "end", "keep_reason",
     "concern", "skip_reason", "flags", "name")
+
+
+def page_paths(shell, style, scripts):
+    """Returns the shell, stylesheet, and script paths for one page."""
+    root = Path(shell).parent
+    return [Path(shell), root / style, *(root / name for name in scripts)]
+
+
+def assemble_page(shell, style, scripts):
+    """Returns one HTML page with the stylesheet and scripts inserted.
+
+    shell is the HTML path. style and scripts are filenames beside it.
+    {{style}} and {{script}} in the shell are replaced. Reads every call
+    so a refresh shows edits without restarting the server.
+    """
+    root = Path(shell).parent
+    text = Path(shell).read_text(encoding="utf-8")
+    css = (root / style).read_text(encoding="utf-8").rstrip("\n")
+    blocks = [
+        (root / name).read_text(encoding="utf-8").rstrip("\n")
+        for name in scripts]
+    if "{{style}}" not in text or "{{script}}" not in text:
+        raise ValueError(f"{Path(shell).name} is missing a page placeholder")
+    text = text.replace("{{style}}", css, 1)
+    text = text.replace("{{script}}", "\n".join(blocks), 1)
+    return text.encode("utf-8")
 
 
 def status_of(row):
@@ -293,7 +321,7 @@ def make_server(review, index, suggestions, port):
             path = unquote(urlparse(self.path).path)
             try:
                 if method == "GET" and self._is_page(path):
-                    page = HTML.read_bytes()
+                    page = assemble_page(HTML, PAGE_STYLE, PAGE_SCRIPTS)
                     self._send(200, "text/html; charset=utf-8", page)
                     return
                 if method == "GET" and path == "/api/queue":
@@ -366,8 +394,11 @@ def main():
         raise SystemExit(f"Review file not found: {args.review}")
     if not Path(args.index).is_file():
         raise SystemExit(f"Index file not found: {args.index}")
-    if not HTML.is_file():
-        raise SystemExit(f"Missing {HTML.name} beside review_ui.py")
+    missing = [
+        path.name for path in page_paths(HTML, PAGE_STYLE, PAGE_SCRIPTS)
+        if not path.is_file()]
+    if missing:
+        raise SystemExit("Missing " + ", ".join(missing))
     if not Path(args.suggestions).is_file():
         print(f"No suggestions at {args.suggestions}; scores will be blank.",
               flush=True)

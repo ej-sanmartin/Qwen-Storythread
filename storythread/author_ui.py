@@ -14,12 +14,20 @@ from urllib.parse import unquote, urlparse
 
 from .data import rows
 from .export import authored_example
-from .review_ui import HOST, MAX_BODY, read_lines, write_atomic
+from .review_ui import (
+    HOST, MAX_BODY, assemble_page, page_paths, read_lines, write_atomic)
 from .runtime import DEFAULT_MODEL, flags_for, measure
 from .scenarios import BRANCHES, parse_authored
 
 PORT = 8766
 HTML = Path(__file__).with_name("author_ui.html")
+PAGE_STYLE = "author_ui.css"
+PAGE_SCRIPTS = (
+    "author_ui_state.js",
+    "author_ui_chat.js",
+    "author_ui_fields.js",
+    "author_ui_pages.js",
+)
 
 
 def as_text(value):
@@ -217,6 +225,38 @@ class Store:
         print(f"saved {stored.get('scenario_id')}", flush=True)
         return stored
 
+    def delete(self, scenario_id):
+        """Removes one scene. Other lines stay unchanged.
+
+        scenario_id is the id already in the file. Returns the removed
+        row. Raises KeyError if that id is missing.
+        """
+        with self.lock:
+            lines, newline, trailing = self._lines()
+            written, collected, removed = [], [], None
+            for line in lines:
+                if not line.strip():
+                    written.append(line)
+                    continue
+                current = decode_row(line)
+                if (removed is None
+                        and current.get("scenario_id") == scenario_id):
+                    removed = current
+                    continue
+                written.append(line)
+                collected.append(current)
+            if removed is None:
+                raise KeyError(scenario_id)
+            if collected:
+                require_quotes(collected)
+                parse_authored(collected)
+            text = newline.join(written)
+            if written and trailing:
+                text += newline
+            write_atomic(self.path, text)
+        print(f"deleted {scenario_id}", flush=True)
+        return removed
+
     def tokenizer(self):
         """Returns the cached tokenizer, loading it on first use."""
         if self._tokenizer is not None:
@@ -271,6 +311,10 @@ def make_server(scenes, port, tokenizer=None, model=DEFAULT_MODEL):
             """Handles create, update, and token checks."""
             self._route("POST")
 
+        def do_DELETE(self):
+            """Handles deleting one saved scene."""
+            self._route("DELETE")
+
         def _is_page(self, path):
             """True for the editor shell, including /new and /scene/."""
             if path in ("/", "/index.html", "/new"):
@@ -282,8 +326,8 @@ def make_server(scenes, port, tokenizer=None, model=DEFAULT_MODEL):
             path = unquote(urlparse(self.path).path)
             try:
                 if method == "GET" and self._is_page(path):
-                    self._send(200, "text/html; charset=utf-8",
-                               HTML.read_bytes())
+                    page = assemble_page(HTML, PAGE_STYLE, PAGE_SCRIPTS)
+                    self._send(200, "text/html; charset=utf-8", page)
                     return
                 if method == "GET" and path == "/api/scenes":
                     self._json(200, store.list_scenes())
@@ -307,6 +351,10 @@ def make_server(scenes, port, tokenizer=None, model=DEFAULT_MODEL):
                     if method == "POST":
                         scene = store.save(scenario_id, self._read_json())
                         self._json(200, {"ok": True, "scene": scene})
+                        return
+                    if method == "DELETE":
+                        store.delete(scenario_id)
+                        self._json(200, {"ok": True})
                         return
                 self._json(404, {"error": "Not found."})
             except KeyError:
@@ -356,8 +404,11 @@ def main():
     parser.add_argument("--port", type=int, default=PORT)
     parser.add_argument("--model", default=DEFAULT_MODEL)
     args = parser.parse_args()
-    if not HTML.is_file():
-        raise SystemExit(f"Missing {HTML.name} beside author_ui.py")
+    missing = [
+        path.name for path in page_paths(HTML, PAGE_STYLE, PAGE_SCRIPTS)
+        if not path.is_file()]
+    if missing:
+        raise SystemExit("Missing " + ", ".join(missing))
     server = make_server(args.scenes, args.port, model=args.model)
     print(f"Author UI at http://{HOST}:{server.server_address[1]}/",
           flush=True)
