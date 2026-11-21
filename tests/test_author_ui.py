@@ -112,6 +112,7 @@ class AuthorUiTest(unittest.TestCase):
             self.assertIn(b"this ending's user turn", body)
             self.assertIn(b"Cited turn was removed", body)
             self.assertIn(b"Are you sure you want to delete", body)
+            self.assertIn(b"Resize the sidebar", body)
 
     def test_lists_saved_scenes(self):
         status, listed = self.request("GET", "/api/scenes")

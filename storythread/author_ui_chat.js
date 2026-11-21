@@ -116,3 +116,44 @@ function select(target) {
   const node = document.querySelector(`#chat [data-target="${target}"]`);
   if (node) node.scrollIntoView({block: "nearest"});
 }
+
+// Drags the sidebar width and remembers it for the next visit.
+function setupSplit() {
+  const split = $("split");
+  const narrow = "(max-width: 900px)";
+  function applySide(px) {
+    const cols = document.querySelector(".cols");
+    const room = cols.clientWidth || window.innerWidth;
+    const min = 260;
+    const max = Math.max(min, room - 280);
+    const width = Math.min(max, Math.max(min, px));
+    document.documentElement.style.setProperty("--side", width + "px");
+  }
+  const saved = Number(localStorage.getItem("author-side"));
+  if (saved && !matchMedia(narrow).matches) applySide(saved);
+  split.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0 || matchMedia(narrow).matches) return;
+    try {
+      split.setPointerCapture(event.pointerId);
+    } catch (error) {
+      // The pointer can already be gone.
+    }
+    document.body.classList.add("resizing");
+    const box = document.querySelector(".cols").getBoundingClientRect();
+    function move(ev) { applySide(box.right - ev.clientX); }
+    function up() {
+      document.body.classList.remove("resizing");
+      split.removeEventListener("pointermove", move);
+      split.removeEventListener("pointerup", up);
+      split.removeEventListener("pointercancel", up);
+      const width = getComputedStyle(document.documentElement)
+        .getPropertyValue("--side");
+      localStorage.setItem("author-side", String(parseInt(width, 10)));
+    }
+    split.addEventListener("pointermove", move);
+    split.addEventListener("pointerup", up);
+    split.addEventListener("pointercancel", up);
+    event.preventDefault();
+  });
+}
+setupSplit();

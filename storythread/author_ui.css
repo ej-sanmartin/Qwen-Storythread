@@ -95,9 +95,15 @@
   #tokens p { margin: 0.25rem 0; font-size: 0.88rem; }
   .cols { flex: 1; min-height: 0; display: flex; }
   #chat { flex: 1; min-width: 0; overflow: auto; padding: 0.8rem 1.1rem 2rem; }
+  #split {
+    flex: none; width: 7px; cursor: col-resize; touch-action: none;
+    background: var(--line);
+  }
+  #split:hover, body.resizing #split { background: var(--mark); }
+  body.resizing { cursor: col-resize; user-select: none; }
   #side {
-    width: 23rem; flex: none; overflow: auto; padding: 0.9rem 1rem;
-    border-left: 1px solid var(--line);
+    width: var(--side, 23rem); flex: none; min-width: 0; overflow: auto;
+    padding: 0.9rem 1rem;
   }
   .card {
     border: 1px dashed var(--mark); border-radius: 10px; cursor: pointer;
@@ -185,9 +191,10 @@
   }
   @media (max-width: 900px) {
     .cols { flex-direction: column; overflow: auto; }
+    #split { display: none; }
     #chat { flex: none; overflow: visible; }
     #side {
-      width: auto; overflow: visible; border-left: 0;
+      width: auto; overflow: visible;
       border-top: 1px solid var(--line);
     }
     .endings { grid-template-columns: 1fr; }
