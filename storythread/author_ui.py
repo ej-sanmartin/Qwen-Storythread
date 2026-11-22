@@ -20,7 +20,7 @@ from .runtime import DEFAULT_MODEL, flags_for, measure
 from .scenarios import BRANCHES, parse_authored
 
 PORT = 8766
-HTML = Path(__file__).with_name("author_ui.html")
+HTML = Path(__file__).parent / "web" / "author" / "author_ui.html"
 PAGE_STYLE = "author_ui.css"
 PAGE_SCRIPTS = (
     "author_ui_state.js",

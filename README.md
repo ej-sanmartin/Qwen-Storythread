@@ -436,7 +436,7 @@ which `transformers` installs.
   `in_proj_qkv`, `in_proj_z`) must be adapted. Otherwise the chart shows the
   exact names and measured values with no groups or descriptions. A Qwen3.5
   run that adapts only full-attention blocks is therefore not recognized. To
-  support another model, edit `storythread/inspect_adapters_glossary.js` and
+  support another model, edit `storythread/web/inspect/inspect_adapters_glossary.js` and
   `detect_architecture` in `storythread/inspect_adapters.py`.
 
 ### Ablate from the chart

@@ -6,7 +6,7 @@ This measures update size only. Behavioral contribution needs ablation.
 
 The numbers work for any MLX-LM LoRA run and always come from the
 checkpoint's own tensor paths. The page's groups and projection
-descriptions (inspect_adapters_glossary.js) are written for Qwen3.5-4B and
+descriptions (web/inspect/inspect_adapters_glossary.js) are written for Qwen3.5-4B and
 are applied only when detect_architecture recognizes it. Other
 checkpoints plot with exact names and values, and no descriptions.
 """
@@ -22,7 +22,7 @@ import numpy as np
 from .ablate import apply_plan, checkpoint_record
 from .review_ui import assemble_page, page_paths
 
-HTML = Path(__file__).with_name("inspect_adapters.html")
+HTML = Path(__file__).parent / "web" / "inspect" / "inspect_adapters.html"
 PAGE_STYLE = "inspect_adapters.css"
 PAGE_SCRIPTS = ("inspect_adapters.js", "inspect_adapters_theme.js",
                 "inspect_adapters_glossary.js", "inspect_adapters_axes.js",
