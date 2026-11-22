@@ -397,7 +397,21 @@ which `transformers` installs.
   larger; height is a percent of earlier), and a flat grid with the numbers.
   Blank spots have no adapter tensor. Click a bar or cell for its module
   path, dimensions, rank, and RMS per arm, plus its RMS across the saved
-  steps. The "How to read this" box on the page explains the axes.
+  steps. Clicking also shows the block type (Gated DeltaNet, feed-forward, or
+  full attention), the full module path, and a plain-language description of
+  the projection. Axis labels stay the exact projection names from the
+  checkpoint keys. The page has a collapsible "What do these labels mean?"
+  glossary below the chart and a "How to read this" box.
+- Height and color show the size of the learned correction only. A taller
+  `in_proj_a` bar alone cannot tell us whether the model retains more
+  context or remembers a story event better. Note that `in_proj_a` and
+  `in_proj_b` are names of **Qwen's projections**, distinct from the **LoRA
+  `A` and `B` factors** (`lora_a`, `lora_b`).
+- **Qwen3.5-4B specific:** the RMS calculation works for any MLX-LM LoRA run,
+  but the block types and projection descriptions in the page are written for
+  Qwen3.5-4B (Gated DeltaNet layers mixed with full attention). Another
+  model's projections still plot, labeled "Unrecognized" with no description.
+  To support one, edit `storythread/inspect_adapters_glossary.js`.
 
 ## 8. Evaluate
 

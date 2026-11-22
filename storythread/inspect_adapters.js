@@ -136,7 +136,8 @@ function renderDetail() {
   const path = state.module;
   if (!path) {
     box.replaceChildren(el("p", {class: "hint"},
-      "Click a cell to see its module path, dimensions, rank, and RMS."));
+      "Click a bar or cell to see its block type, module path, what the " +
+      "projection does, dimensions, rank, and effective LoRA update RMS."));
     return;
   }
   const info = REPORT.modules[path];
@@ -155,12 +156,31 @@ function renderDetail() {
   const [a, b] = REPORT.arms;
   const gap = pct === undefined ? [] : [el("p", {},
     `At step ${state.step}, ${a} is ${signed(pct)} vs ${b}.`)];
+  const about = describe(info.column);
+  const facts = el("dl", {class: "facts"},
+    el("dt", {}, "Block type"), el("dd", {}, about.group),
+    el("dt", {}, "Block"), el("dd", {}, info.block === null ? "\u2014"
+                                                           : `${info.block}`),
+    el("dt", {}, "Projection"), el("dd", {}, el("code", {}, about.label)),
+    el("dt", {}, "What it does"), el("dd", {}, about.text),
+    el("dt", {}, "Module path"), el("dd", {}, el("code", {}, path)));
   box.replaceChildren(
-    el("h2", {}, "Selected module"), el("code", {}, path),
+    el("h2", {}, "Selected module"), facts,
     el("table", {}, el("tr", {}, el("th", {}, "Arm"),
       el("th", {}, "Input \u00d7 output"), el("th", {}, "Rank"),
-      el("th", {}, `RMS at step ${state.step}`)), ...rows), ...gap,
+      el("th", {}, `Effective LoRA update RMS (step ${state.step})`)),
+      ...rows), ...gap,
     el("h2", {}, "Across saved steps"), chart(path), legend, stepTable(path));
+}
+
+// Fills the glossary table from the shared GLOSSARY list.
+function renderGlossary() {
+  const head = el("tr", {}, ...["Group", "Label", "Description"].map(
+    (name) => el("th", {scope: "col"}, name)));
+  const rows = GLOSSARY.map(([prefix, label, text]) => el("tr", {},
+    el("td", {}, GROUPS[prefix]), el("td", {}, el("code", {}, label)),
+    el("td", {}, text)));
+  $("glossary-table").replaceChildren(head, ...rows);
 }
 
 // Fills the color legend for the current view.
@@ -217,6 +237,7 @@ function boot() {
     drawScenes();
   });
   window.addEventListener("resize", drawScenes);
+  renderGlossary();
   render();
 }
 // Runs after every script in the page has loaded.

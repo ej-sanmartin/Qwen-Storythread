@@ -3,6 +3,10 @@
 Reads MLX-LM adapter snapshots directly (Qwen is never loaded) and writes a
 standalone heatmap of the effective LoRA update RMS per block and projection.
 This measures update size only. Behavioral contribution needs ablation.
+
+The numbers work for any MLX-LM LoRA run, but the page's block types and
+projection descriptions (inspect_adapters_glossary.js) are written for
+Qwen3.5-4B. Other models plot without descriptions.
 """
 import argparse
 import json
@@ -17,7 +21,8 @@ from .review_ui import assemble_page, page_paths
 
 HTML = Path(__file__).with_name("inspect_adapters.html")
 PAGE_STYLE = "inspect_adapters.css"
-PAGE_SCRIPTS = ("inspect_adapters.js", "inspect_adapters_3d.js")
+PAGE_SCRIPTS = ("inspect_adapters.js", "inspect_adapters_3d.js",
+                "inspect_adapters_glossary.js")
 METRIC = "Effective LoRA update RMS"
 SNAPSHOT = re.compile(r"^(\d+)_adapters\.safetensors$")
 FINAL = "adapters.safetensors"

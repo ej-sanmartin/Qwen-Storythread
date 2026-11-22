@@ -218,6 +218,11 @@ class CheckpointTest(unittest.TestCase):
         for placeholder in ("{{style}}", "{{script}}", "{{data}}"):
             self.assertNotIn(placeholder, page)
         self.assertIn("function drawScene(", page)
+        self.assertIn("What do these labels mean?", page)
+        for label in ("in_proj_a", "in_proj_b", "in_proj_qkv", "in_proj_z",
+                      "out_proj", "gate_proj", "up_proj", "down_proj",
+                      "q_proj", "k_proj", "v_proj", "o_proj"):
+            self.assertIn(f'"{label}"', page)
         data = re.search(r'id="report">(.*?)</script>', page, re.S)[1]
         self.assertEqual(json.loads(data)["steps"], [25, 50])
 

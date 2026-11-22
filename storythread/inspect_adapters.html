@@ -22,10 +22,9 @@
     <ul>
       <li><b>One bar (or cell)</b> is one LoRA-adapted weight matrix in one
         transformer block.</li>
-      <li><b>Left to right</b> is which projection. <code>in_proj_*</code>
-        and <code>out_proj</code> belong to linear-attention layers,
-        <code>q/k/v/o_proj</code> to full-attention layers, and
-        <code>gate/up/down_proj</code> to the feed-forward MLP.</li>
+      <li><b>Left to right</b> is which projection, labeled with the exact
+        names used in the checkpoint keys. See <b>What do these labels
+        mean?</b> below the chart.</li>
       <li><b>Front to back</b> is the block index (adapted blocks only).</li>
       <li><b>Height and color</b> are the effective LoRA update RMS: the
         typical size of the change LoRA adds to each weight in that matrix.
@@ -55,6 +54,25 @@
 </header>
 <main>
   <div id="panels"></div>
+  <details id="glossary">
+    <summary>What do these labels mean?</summary>
+    <p class="note"><b>Qwen's projections are not LoRA's factors.</b>
+      <code>in_proj_a</code> and <code>in_proj_b</code> are names of
+      <b>Qwen's projections</b>, weight matrices in the base model. They are
+      distinct from the <b>LoRA <code>A</code> and <code>B</code>
+      factors</b> (<code>lora_a</code>, <code>lora_b</code>): every adapted
+      projection gets its own pair of those, and the chart measures the size
+      of their product.</p>
+    <p class="note"><b>Height and color</b> show the size of the learned
+      correction. A taller <code>in_proj_a</code> bar alone cannot tell us
+      whether the model retains more context or remembers a story event
+      better; that takes evaluation or ablation.</p>
+    <p class="note">The groups and descriptions below are written for
+      Qwen3.5-4B, which mixes Gated DeltaNet layers with full-attention
+      layers. Other models still plot, but their projections show no
+      description.</p>
+    <table id="glossary-table"></table>
+  </details>
   <section id="detail" aria-live="polite"></section>
 </main>
 <script type="application/json" id="report">{{data}}</script>
