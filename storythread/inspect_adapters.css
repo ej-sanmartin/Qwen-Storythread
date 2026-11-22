@@ -36,7 +36,11 @@
   --face-shade: .6;
   color-scheme: dark;
 }
-body { margin: 0; padding: 1.5rem; background: var(--bg); }
+html { background: var(--bg); }
+body {
+  box-sizing: border-box; width: min(70rem, 100%);
+  margin: 0 auto; padding: 1.5rem; background: var(--bg);
+}
 h1 { margin: 0 0 .25rem; font-size: 1.4rem; }
 h2 { margin: 0 0 .5rem; font-size: 1rem; }
 code { font-size: .85em; }
