@@ -1,0 +1,65 @@
+{
+  "train": {
+    "summary": {
+      "unknown/-": {
+        "examples": 4,
+        "input_tokens": {
+          "n": 4,
+          "min": 35,
+          "median": 40.5,
+          "p95": 47,
+          "max": 47
+        },
+        "target_tokens": {
+          "n": 4,
+          "min": 24,
+          "median": 26.0,
+          "p95": 31,
+          "max": 31
+        },
+        "full_tokens": {
+          "n": 4,
+          "min": 61,
+          "median": 67.0,
+          "p95": 75,
+          "max": 75
+        },
+        "evidence_distance_turns": null,
+        "evidence_distance_tokens": null
+      }
+    },
+    "flagged": []
+  },
+  "valid": {
+    "summary": {
+      "unknown/-": {
+        "examples": 2,
+        "input_tokens": {
+          "n": 2,
+          "min": 37,
+          "median": 38.0,
+          "p95": 39,
+          "max": 39
+        },
+        "target_tokens": {
+          "n": 2,
+          "min": 23,
+          "median": 27.0,
+          "p95": 31,
+          "max": 31
+        },
+        "full_tokens": {
+          "n": 2,
+          "min": 62,
+          "median": 65.0,
+          "p95": 68,
+          "max": 68
+        },
+        "evidence_distance_turns": null,
+        "evidence_distance_tokens": null
+      }
+    },
+    "flagged": []
+  },
+  "max_tokens": 1024
+}

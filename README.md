@@ -271,6 +271,11 @@ recent evidence, the other on earlier evidence. `earlier` must be farther from
 the reply than `recent`. `evidence` is a quote that must appear in the cited
 turn.
 
+`authored/scenes.jsonl` is sized for a 16 GB Mac: every scene fits 512 tokens
+(see step 6). `authored/scenes-long.jsonl` keeps the original longer scenes
+(up to about 1,450 tokens, evidence up to 27 turns back) for machines with more
+memory. Pass it to `prepare` and to `author_ui --scenes` there.
+
 ### Local authoring UI
 
 `author_ui.py` serves one page for writing these scenes, on localhost:
