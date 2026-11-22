@@ -5,6 +5,15 @@
 const YAW_LIMIT = 1.2;  // keeps the side labels on the outside
 const HINT = "Drag to rotate. Click a bar for details" +
   (ARCHITECTURE_KNOWN ? ", or a label to read what it means." : ".");
+const ABLA_HINT = "Drag to rotate. Click a bar to toggle it, " +
+  "or a block label to toggle the block.";
+
+// Returns the readout text when the pointer is over empty chart space.
+function idleHint(scene) {
+  if (state.mode !== "ablate") return HINT;
+  return scene.arm ? ABLA_HINT
+    : "Drag to rotate. Toggle projections on a per-arm chart.";
+}
 
 // Returns the pointer position in the canvas's device pixels, the space
 // used by isPointInPath while the dpr transform is active.
@@ -41,7 +50,7 @@ function attach(scene, readout) {
     if (!drag) {
       const link = pickLink(scene, e);
       const bar = link ? null : pick(scene, e);
-      readout.textContent = link ? link.hint : bar ? bar.label : HINT;
+      readout.textContent = link ? link.hint : bar ? bar.label : idleHint(scene);
       canvas.style.cursor = link || bar ? "pointer" : "grab";
       return;
     }
@@ -62,10 +71,18 @@ function attach(scene, readout) {
     if (!clicked) return;
     const link = pickLink(scene, e);
     if (link) {
+      const block = link.ids.length === 1 && link.ids[0].startsWith("block:")
+        ? Number(link.ids[0].slice(6)) : null;
+      if (state.mode === "ablate" && scene.arm && block !== null) {
+        toggleBlock(scene.arm, block);
+        return;
+      }
       goToGlossary(link.ids);
       return;
     }
     const bar = pick(scene, e);
-    if (bar) { state.module = bar.path; render(); }
+    if (!bar) return;
+    if (state.mode === "ablate" && scene.arm) toggleModule(scene.arm, bar.path);
+    else if (state.mode !== "ablate") { state.module = bar.path; render(); }
   });
 }

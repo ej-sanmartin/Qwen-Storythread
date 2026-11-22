@@ -8,7 +8,7 @@ for (const [path, info] of Object.entries(REPORT.modules)) {
   PATHS.set(`${info.block}|${info.column}`, path);
 }
 const state = {step: REPORT.steps[REPORT.steps.length - 1], module: null,
-               view: "size"};  // view: size | diff | flat
+               view: "size", mode: "inspect"};  // view: size | diff | flat
 const $ = (id) => document.getElementById(id);
 
 // Builds an element: make(namespace, tag, {attr: value}, ...children).
@@ -76,12 +76,17 @@ function cell(arm, block, column) {
   const path = PATHS.get(`${block}|${column.id}`);
   const value = path ? valueAt(arm, state.step, path) : undefined;
   if (value === undefined) return el("span", {class: "cell empty"});
-  const selected = path === state.module ? " selected" : "";
+  const marking = state.mode === "ablate"
+    ? (chosen(arm).has(path) ? " hollow" : "")
+    : (path === state.module ? " selected" : "");
   const label = block === null ? "other" : `block ${block}`;
   return el("button", {
-    class: `cell${selected}`, style: shade(value), title: path,
+    class: `cell${marking}`, style: shade(value), title: path,
     "aria-label": `${arm} ${label} ${column.label}: ${value}`,
-    onclick: () => { state.module = path; render(); },
+    onclick: () => {
+      if (state.mode === "ablate") toggleModule(arm, path);
+      else { state.module = path; render(); }
+    },
   }, fmt(value));
 }
 
@@ -98,8 +103,13 @@ function columnHeader(column) {
 
 // Returns a flat-grid row header; a button to the block's glossary row when
 // the architecture is known.
-function rowHeader(block) {
+function rowHeader(block, arm) {
   if (block === null) return el("span", {class: "row"}, "other");
+  if (state.mode === "ablate") {
+    return el("button", {class: "row", type: "button",
+      title: `block ${block}: select or clear its projections`,
+      onclick: () => toggleBlock(arm, block)}, `${block}`);
+  }
   if (!ARCHITECTURE_KNOWN) return el("span", {class: "row"}, `${block}`);
   return el("button", {class: "row", type: "button",
     title: `block ${block}: jump to its description`,
@@ -113,7 +123,7 @@ function panel(arm) {
     el("span"),
     ...REPORT.columns.map(columnHeader));
   for (const block of REPORT.blocks) {
-    grid.append(rowHeader(block));
+    grid.append(rowHeader(block, arm));
     for (const column of REPORT.columns) grid.append(cell(arm, block, column));
   }
   const title = el("h2", {}, arm, " ",
@@ -156,6 +166,7 @@ function render() {
   renderLegend();
   drawScenes();
   renderDetail();
+  renderAblation();
 }
 
 // Fills the step selector, notes, and legend, then draws.
@@ -181,6 +192,10 @@ function boot() {
   $("notes").replaceChildren(...notes.map((n) => el("li", {}, n)));
   $("view").addEventListener("change", (e) => {
     state.view = e.target.value;
+    render();
+  });
+  $("mode").addEventListener("change", (e) => {
+    state.mode = e.target.value;
     render();
   });
   $("reset").addEventListener("click", () => {

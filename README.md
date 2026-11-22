@@ -439,6 +439,35 @@ which `transformers` installs.
   support another model, edit `storythread/inspect_adapters_glossary.js` and
   `detect_architecture` in `storythread/inspect_adapters.py`.
 
+### Ablate from the chart
+
+**Ablation** in the Mode menu (Inspect stays the default) toggles projections
+on the per-arm charts. Click a bar to toggle that module. Click a block label
+to select every adapted projection in that block, or to clear them when they
+are all selected. Dragging still rotates; a drag is not a click. Selected bars
+are hollow outlines at the same height, so the RMS scale stays readable. The
+list under the chart shows the count and the full module paths. A selection
+belongs to one arm and one checkpoint step: changing the step shows that
+step's own set, and it is not reused for the other arm.
+
+**Export ablation plan** downloads JSON (`schema`, `arm`, `checkpoint`,
+`sha256`, sorted `modules`). It stays disabled until the current step has a
+selection for exactly one arm. With both arms selected, each arm has its own
+button. Apply the plan, then generate with the existing eval command. Scoring
+is unchanged.
+
+```bash
+python -m storythread.inspect_adapters \
+  --plan ablation-recent-step100.json --output runs/ablate-recent
+python -m storythread.eval generate --label recent-ablate \
+  --adapter runs/ablate-recent eval/dev.jsonl work/eval/recent-ablate.jsonl
+```
+
+The new directory is an MLX-LM adapter: the source config, and the checkpoint
+weights with only the selected `lora_b` tensors set to zero. Shapes and dtypes
+stay as they were. The source checkpoint is not modified, and an existing
+output directory is refused.
+
 ## 8. Evaluate
 
 Author held-out scenarios in `eval/dev.jsonl` and `eval/test.jsonl` with

@@ -75,8 +75,9 @@ function glowColor(bar, alpha) {
   return `hsl(${bar.hue} ${bar.sat}% 55% / ${alpha})`;
 }
 
-// Draws one bar's visible faces and records them for hit testing. Every bar
-// glows a little; the selected bar glows more.
+// Draws one bar's visible faces and records them for hit testing. A hollow
+// bar keeps its height and skips the fill, so the outline is the selection.
+// Other bars glow a little; the inspected bar glows more.
 function drawBar(ctx, at, bar, scene) {
   const t = theme();
   const h = bar.h < 0 ? Math.min(bar.h, -MIN_H) : Math.max(bar.h, MIN_H);
@@ -93,15 +94,23 @@ function drawBar(ctx, at, bar, scene) {
       if (k) path.lineTo(x, y); else path.moveTo(x, y);
     });
     path.closePath();
-    ctx.fillStyle =
-      `hsl(${bar.hue} ${bar.sat}% ${bar.light + face.dl * t.faceShade}%)`;
-    ctx.shadowColor = glowColor(bar, bar.selected ? t.glowSelected : t.glow);
-    ctx.shadowBlur = (bar.selected ? t.blurSelected : t.blur) * scene.dpr;
-    ctx.fill(path);
-    ctx.shadowBlur = 0;
-    ctx.strokeStyle = t.edge;
-    ctx.lineWidth = 0.6;
-    ctx.stroke(path);
+    if (bar.hollow) {
+      const tone = isDark() ? 72 : 36;
+      ctx.strokeStyle = `hsl(${bar.hue} ${bar.sat}% ${tone}%)`;
+      ctx.lineWidth = 1.6;
+      ctx.stroke(path);
+    } else {
+      const glow = bar.selected ? t.glowSelected : t.glow;
+      ctx.fillStyle =
+        `hsl(${bar.hue} ${bar.sat}% ${bar.light + face.dl * t.faceShade}%)`;
+      ctx.shadowColor = glowColor(bar, glow);
+      ctx.shadowBlur = (bar.selected ? t.blurSelected : t.blur) * scene.dpr;
+      ctx.fill(path);
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = t.edge;
+      ctx.lineWidth = 0.6;
+      ctx.stroke(path);
+    }
     scene.hits.push({path, bar});
   }
 }
@@ -109,6 +118,7 @@ function drawBar(ctx, at, bar, scene) {
 // Outlines the selected bar's faces on top, with a strong glow; the fill is
 // left untouched so color and height still show the update size.
 function outlineSelected(ctx, scene) {
+  if (state.mode === "ablate") return;
   const t = theme();
   const faces = scene.hits.filter((hit) => hit.bar.selected);
   if (!faces.length) return;
@@ -164,26 +174,30 @@ function where(info) {
 }
 
 // Returns bars for every module that measure(path, info) describes.
-function gridBars(measure) {
+function gridBars(measure, arm) {
   const bars = [];
+  const marked = arm && state.mode === "ablate" ? chosen(arm) : null;
   for (const [path, info] of Object.entries(REPORT.modules)) {
     const bar = measure(path, info);
     if (!bar) continue;
-    bars.push({path, i: COLUMN_INDEX.get(info.column),
+    bars.push({...bar, path, i: COLUMN_INDEX.get(info.column),
                j: REPORT.blocks.indexOf(info.block),
-               selected: path === state.module, ...bar});
+               selected: state.mode === "inspect" && path === state.module,
+               hollow: marked ? marked.has(path) : false});
   }
   return bars;
 }
 
 // Returns a panel holding one 3D scene with a hover readout.
-function scenePanel(title, bars, caption, low, tall, note) {
+function scenePanel(title, bars, caption, low, tall, note, arm) {
   const canvas = el("canvas", {
     class: tall ? "scene tall" : "scene", role: "img",
     "aria-label": `${title}: 3D bar chart. The Flat grid view is the ` +
                   "keyboard-friendly version."});
-  const readout = el("p", {class: "readout"}, HINT);
-  const scene = {canvas, bars, caption, low, hits: [], links: []};
+  const readout = el("p", {class: "readout"});
+  const scene = {canvas, bars, caption, low, hits: [], links: [],
+                 arm: arm || null};
+  readout.textContent = idleHint(scene);
   scenes.push(scene);
   attach(scene, readout);
   const notes = note ? [el("p", {class: "absent"}, note)] : [];
@@ -199,11 +213,11 @@ function sizePanel(arm) {
     const t = Math.min(1, v / (REPORT.max || 1));
     return {h: t * HEIGHT, ...armTone(arm, t),
             label: `${arm} \u00b7 ${where(info)} \u00b7 RMS ${v.toPrecision(3)}`};
-  });
+  }, arm);
   const note = String(state.step) in REPORT.rms[arm]
     ? "" : `No snapshot for ${arm} at step ${state.step}.`;
   return scenePanel(`${arm} \u00b7 step ${state.step}`, bars,
-    "Taller and deeper: larger effective LoRA update RMS.", 0, false, note);
+    "Taller and deeper: larger effective LoRA update RMS.", 0, false, note, arm);
 }
 
 // Returns the 3D panel of the first arm minus the second, in percent.

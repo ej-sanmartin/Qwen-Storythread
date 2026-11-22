@@ -19,6 +19,7 @@ import struct
 
 import numpy as np
 
+from .ablate import apply_plan, checkpoint_record
 from .review_ui import assemble_page, page_paths
 
 HTML = Path(__file__).with_name("inspect_adapters.html")
@@ -26,7 +27,7 @@ PAGE_STYLE = "inspect_adapters.css"
 PAGE_SCRIPTS = ("inspect_adapters.js", "inspect_adapters_theme.js",
                 "inspect_adapters_glossary.js", "inspect_adapters_axes.js",
                 "inspect_adapters_3d.js", "inspect_adapters_input.js",
-                "inspect_adapters_detail.js")
+                "inspect_adapters_detail.js", "inspect_adapters_ablate.js")
 METRIC = "Effective LoRA update RMS"
 SNAPSHOT = re.compile(r"^(\d+)_adapters\.safetensors$")
 FINAL = "adapters.safetensors"
@@ -239,6 +240,9 @@ def build_report(runs):
                                       if module in dims[label]}}
                     for module in paths},
         "rms": rms, "max": max(values, default=0.0),
+        "checkpoints": {label: {str(step): checkpoint_record(path)
+                                for step, path in snapshots.items()}
+                        for label, snapshots in found.items()},
     }
 
 
@@ -251,10 +255,24 @@ def render(report):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--recent", required=True, help="recent run directory")
-    parser.add_argument("--earlier", required=True, help="earlier run directory")
-    parser.add_argument("--output", default="work/adapter_heatmap.html")
+    parser.add_argument("--recent", help="recent run directory")
+    parser.add_argument("--earlier", help="earlier run directory")
+    parser.add_argument("--plan", help="ablation plan JSON to apply")
+    parser.add_argument(
+        "--output",
+        help="HTML report, or the new adapter directory with --plan")
     args = parser.parse_args(argv)
+    if args.plan:
+        if not args.output:
+            raise SystemExit("error: --output DIR is required with --plan")
+        try:
+            keys = apply_plan(args.plan, args.output)
+        except ValueError as error:
+            raise SystemExit(f"error: {error}")
+        print(f"Wrote {args.output}: zeroed {len(keys)} lora_b tensor(s)")
+        return
+    if not args.recent or not args.earlier:
+        raise SystemExit("error: --recent and --earlier are required")
     missing = [p for p in page_paths(HTML, PAGE_STYLE, PAGE_SCRIPTS)
                if not p.is_file()]
     if missing:
@@ -263,6 +281,8 @@ def main(argv=None):
         report = build_report({"recent": args.recent, "earlier": args.earlier})
     except ValueError as error:
         raise SystemExit(f"error: {error}")
+    if not args.output:
+        args.output = "work/adapter_heatmap.html"
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_bytes(render(report))

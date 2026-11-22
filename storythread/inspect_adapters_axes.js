@@ -154,10 +154,15 @@ function drawBlockLabels(ctx, at, scene) {
     ctx.textAlign = x1 < x0 ? "right" : "left";
     const text = b === null ? "other" : `block ${b}`;
     haloText(ctx, text, x1 + (x1 < x0 ? -4 : 4), y1 + 4);
-    if (ARCHITECTURE_KNOWN && b !== null) {
-      const w = ctx.measureText(text).width;
-      addLink(scene, [x1 < x0 ? x1 - 4 - w : x1 + 4, y1 - 8, w, 16],
-              [`block:${b}`], `${text}: click to read what a block is`);
+    if (b === null) return;
+    const w = ctx.measureText(text).width;
+    const rect = [x1 < x0 ? x1 - 4 - w : x1 + 4, y1 - 8, w, 16];
+    if (state.mode === "ablate" && scene.arm) {
+      addLink(scene, rect, [`block:${b}`],
+              `${text}: click to select or clear its projections`);
+    } else if (ARCHITECTURE_KNOWN) {
+      addLink(scene, rect, [`block:${b}`],
+              `${text}: click to read what a block is`);
     }
   });
 }

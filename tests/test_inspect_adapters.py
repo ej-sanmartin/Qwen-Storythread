@@ -2,6 +2,7 @@
 
 Run: python -m unittest discover tests
 """
+import hashlib
 import json
 from pathlib import Path
 import re
@@ -245,6 +246,8 @@ class CheckpointTest(unittest.TestCase):
         self.assertIn("function drawScene(", page)
         self.assertIn("function armTone(", page)
         self.assertIn("function goToGlossary(", page)
+        self.assertIn("function planFor(", page)
+        self.assertIn("Export ablation plan", page)
         self.assertIn("Transformer layers (blocks)", page)
         self.assertIn('data-theme="dark"', page)
         self.assertIn("What do these labels mean?", page)
@@ -253,7 +256,12 @@ class CheckpointTest(unittest.TestCase):
                       "q_proj", "k_proj", "v_proj", "o_proj"):
             self.assertIn(f'"{label}"', page)
         data = re.search(r'id="report">(.*?)</script>', page, re.S)[1]
-        self.assertEqual(json.loads(data)["steps"], [25, 50])
+        report = json.loads(data)
+        self.assertEqual(report["steps"], [25, 50])
+        saved = report["checkpoints"]["recent"]["50"]
+        blob = (recent / "0000050_adapters.safetensors").read_bytes()
+        self.assertEqual(saved["sha256"], hashlib.sha256(blob).hexdigest())
+        self.assertTrue(saved["path"].endswith("0000050_adapters.safetensors"))
 
 
 if __name__ == "__main__":

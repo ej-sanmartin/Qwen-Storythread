@@ -43,6 +43,10 @@
     </ul>
   </details>
   <div id="controls">
+    <label>Mode <select id="mode">
+      <option value="inspect">Inspect</option>
+      <option value="ablate">Ablation</option>
+    </select></label>
     <label>View <select id="view">
       <option value="size">3D: update size, both arms</option>
       <option value="diff">3D: recent vs earlier</option>
@@ -57,6 +61,7 @@
 </header>
 <main>
   <div id="panels"></div>
+  <section id="ablation" hidden></section>
   <section id="detail" aria-live="polite"></section>
   <details id="glossary">
     <summary>What do these labels mean?</summary>
