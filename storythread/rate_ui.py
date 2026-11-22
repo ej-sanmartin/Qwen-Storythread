@@ -9,14 +9,12 @@ Run: python -m storythread.rate_ui [--dir work/eval]
 import argparse
 import json
 import threading
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import unquote, urlparse
 
 from .data import rows
 from .eval_flow import DEFAULT_DIR, sheets
-from .review_ui import (
-    HOST, MAX_BODY, assemble_page, page_paths, write_atomic)
+from .http_ui import (
+    HOST, JsonHandler, assemble_page, bind, page_paths, write_atomic)
 
 PORT = 8769
 HTML = Path(__file__).parent / "web" / "rate" / "rate_ui.html"
@@ -105,71 +103,31 @@ def make_server(directory, port):
     """Returns a server bound to 127.0.0.1. port 0 picks a free port."""
     store = Store(directory)
 
-    class Handler(BaseHTTPRequestHandler):
+    class Handler(JsonHandler):
         """Serves the page and the rating JSON routes."""
 
-        def do_GET(self):
-            """Handles the page, the sheet list, and one sheet."""
-            self._route("GET")
+        key_error = "Unknown sheet or case."
 
-        def do_POST(self):
-            """Handles saving one rating."""
-            self._route("POST")
-
-        def _route(self, method):
-            """Dispatches one request, or returns a JSON error."""
-            path = unquote(urlparse(self.path).path)
+        def route(self, method, path):
+            """Answers the page, the sheet list, and one rating."""
             prefix = "/api/sheets/"
-            try:
-                if method == "GET" and path in ("/", "/index.html"):
-                    page = assemble_page(HTML, PAGE_STYLE, PAGE_SCRIPTS)
-                    self._send(200, "text/html; charset=utf-8", page)
-                elif method == "GET" and path == "/api/sheets":
-                    self._json(200, store.listing())
-                elif path.startswith(prefix) and method == "GET":
-                    self._json(200, store.cases(path[len(prefix):]))
-                elif path.startswith(prefix) and method == "POST":
-                    row = store.rate(path[len(prefix):], self._read_json())
-                    self._json(200, {"ok": True, "row": row})
-                else:
-                    self._json(404, {"error": "Not found."})
-            except KeyError:
-                self._json(404, {"error": "Unknown sheet or case."})
-            except ValueError as error:
-                self._json(400, {"error": str(error)})
+            if method == "GET" and path in ("/", "/index.html"):
+                page = assemble_page(HTML, PAGE_STYLE, PAGE_SCRIPTS)
+                self._send(200, "text/html; charset=utf-8", page)
+                return True
+            if method == "GET" and path == "/api/sheets":
+                self._json(200, store.listing())
+                return True
+            if path.startswith(prefix) and method == "GET":
+                self._json(200, store.cases(path[len(prefix):]))
+                return True
+            if path.startswith(prefix) and method == "POST":
+                row = store.rate(path[len(prefix):], self._read_json())
+                self._json(200, {"ok": True, "row": row})
+                return True
+            return False
 
-        def _read_json(self):
-            """Returns the POST body as an object."""
-            length = int(self.headers.get("Content-Length") or 0)
-            if length <= 0 or length > MAX_BODY:
-                raise ValueError("Expected a JSON body.")
-            try:
-                payload = json.loads(self.rfile.read(length).decode("utf-8"))
-            except (UnicodeError, json.JSONDecodeError):
-                raise ValueError("Expected a JSON object.") from None
-            if not isinstance(payload, dict):
-                raise ValueError("Expected a JSON object.")
-            return payload
-
-        def _json(self, code, payload):
-            """Sends payload as JSON."""
-            raw = json.dumps(payload, ensure_ascii=False).encode("utf-8")
-            self._send(code, "application/json; charset=utf-8", raw)
-
-        def _send(self, code, content_type, raw):
-            """Sends raw bytes with a content type and no cache."""
-            self.send_response(code)
-            self.send_header("Content-Type", content_type)
-            self.send_header("Content-Length", str(len(raw)))
-            self.send_header("Cache-Control", "no-store")
-            self.end_headers()
-            self.wfile.write(raw)
-
-        def log_message(self, fmt, *args):
-            """Drops the default access log."""
-            return
-
-    return ThreadingHTTPServer((HOST, port), Handler)
+    return bind(Handler, port)
 
 
 def main():

@@ -1,16 +1,23 @@
 // ---- Chat (eval) --------------------------------------------------------
 
-// Returns one history turn as bubbles: two for the evidence turn.
+// Returns true when the turn is drawn twice, once per version.
+function splitTurn(turn) {
+  return turn.key === state.evidence || turn.alt !== turn.content;
+}
+
+// Returns one history turn as bubbles. A split turn shows version A and B.
 function turnViews(turn, i) {
   const label = `${i} \u00b7 ${SPEAKER[turn.role] || turn.role}`;
   const target = "turn:" + turn.key;
-  if (turn.key !== state.evidence) {
+  if (!splitTurn(turn)) {
     return [bubble(turn.role, label, turn.content, [], target)];
   }
+  const evidence = turn.key === state.evidence;
   return VERSIONS.map((name) => bubble(
     turn.role, label, name === "a" ? turn.content : turn.alt,
-    [{name: name, quote: state.quotes[name],
-      label: `${TITLE[name]} \u00b7 ${plural(turnsBack())} back`}],
+    [{name: name, quote: evidence ? state.quotes[name] : "",
+      label: evidence
+        ? `${TITLE[name]} \u00b7 ${plural(turnsBack())} back` : TITLE[name]}],
     target));
 }
 

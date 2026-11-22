@@ -96,7 +96,8 @@ python -m storythread.runtime setup-model            # freezes models/qwen35-4b-
 The scripts live in the `storythread/` package. Run each from the repository
 root as `python -m storythread.<name>` (`data`, `judge`, `runtime`, `eval`,
 `review_ui`, `author_ui`, `rate_ui`, `inspect_adapters`); `export`,
-`scenarios`, `splits`, `author_eval`, `eval_flow`, and `ablate` are helpers.
+`scenarios`, `splits`, `author_eval`, `author_store`, `eval_flow`,
+`http_ui`, `review_store`, and `ablate` are helpers.
 Each page's HTML, CSS, and JavaScript live in `storythread/web/<tool>/`
 (`author`, `review`, `rate`, `inspect`). Configs (`pilot.yaml`,
 `smoke.yaml`), `fixtures/`, and `tests/` stay at the root.
@@ -497,8 +498,12 @@ turn and what a correct reply does in each version. The page builds both
 `messages` lists itself and stores them in the schema in step 9. Saving checks
 the same rules as `eval validate`, and a scenario that reuses a group or card
 from the sibling file (`dev.jsonl` and `test.jsonl` check each other) is
-refused. Write `test.jsonl` before the first `generate` and then leave it
-alone: the hash recorded in every output shows whether it changed.
+refused. Once `eval run` has generated against a file, the editor refuses
+further edits until those outputs are deleted: it matches the file's bytes
+to `cases_sha` in `--eval-dir` (default `work/eval`). A turn that differs
+between versions and is not the evidence turn is shown as two texts, and
+Save stays blocked until you make that turn the evidence turn or make the
+texts match.
 
 ### Run it
 

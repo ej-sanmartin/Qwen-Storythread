@@ -128,6 +128,10 @@ function problems() {
       add(`Turn ${i} has the same speaker as turn ${i - 1}.`, target);
     }
     if (!turn.content.trim()) add(`Turn ${i} is empty.`, target);
+    if (turn.key !== state.evidence && turn.alt !== turn.content) {
+      add(`Turn ${i} differs between versions. Make it the evidence ` +
+          "turn, or make both texts match.", target);
+    }
   });
   const last = turns[turns.length - 1];
   if (last && last.role !== "assistant") {

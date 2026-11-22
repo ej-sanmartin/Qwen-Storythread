@@ -13,6 +13,13 @@ function removeTurn(key) {
   renderFields();
 }
 
+// Edits version A. A shared turn keeps version B the same.
+function setTurnText(turn, value) {
+  const shared = turn.key !== state.evidence && turn.alt === turn.content;
+  turn.content = value;
+  if (shared) turn.alt = value;
+}
+
 // Sets the evidence turn (turn) or clears it (null).
 function setEvidence(turn) {
   state.evidence = turn ? turn.key : null;
@@ -67,6 +74,7 @@ function evidenceFields(turn) {
 
 function turnFields(i, turn) {
   const mine = turn.key === state.evidence;
+  const split = !mine && turn.alt !== turn.content;
   const role = el("select", {}, ...["assistant", "user"].map((r) => (
     el("option", {value: r, text: `${SPEAKER[r]} (${r})`}))));
   role.value = turn.role;
@@ -81,8 +89,21 @@ function turnFields(i, turn) {
   return [
     el("h2", {text: `Turn ${i}`}),
     el("label", {}, el("span", {text: "Speaker"}), role),
-    field({label: mine ? "Text (version A)" : "Text", value: turn.content,
-           rows: 7, id: "turn-text", set: (v) => { turn.content = v; }}),
+    field({label: mine || split ? "Text (version A)" : "Text",
+           value: turn.content, rows: 7, id: "turn-text",
+           set: (v) => setTurnText(turn, v)}),
+    ...(split ? [
+      field({label: "Text (version B)", value: turn.alt, rows: 7,
+             id: "turn-alt", set: (v) => { turn.alt = v; }}),
+      el("div", {class: "btns"}, el("button", {
+        type: "button", text: "Make both versions match",
+        onclick: () => {
+          turn.alt = turn.content;
+          touch();
+          renderChat();
+          renderFields();
+        }})),
+    ] : []),
     el("div", {class: "btns"}, add("Add turn above", i),
       add("Add turn below", i + 1),
       el("button", {type: "button", text: "Remove turn",

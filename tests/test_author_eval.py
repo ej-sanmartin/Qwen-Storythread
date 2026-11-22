@@ -53,8 +53,9 @@ class EvalModeTest(unittest.TestCase):
         self.test = self.root / "test.jsonl"
         shutil.copyfile(FIXTURES / "eval-dev.jsonl", self.dev)
         shutil.copyfile(FIXTURES / "eval-test.jsonl", self.test)
+        self.gen = self.root / "gen"
         self.server = author_ui.make_server(
-            self.dev, 0, kind="eval", other=self.test)
+            self.dev, 0, kind="eval", other=self.test, eval_dir=self.gen)
         self.port = self.server.server_address[1]
         threading.Thread(target=self.server.serve_forever, daemon=True).start()
         self.wait_until_up()
@@ -162,6 +163,25 @@ class EvalModeTest(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertEqual(
             [r["scenario_id"] for r in rows(self.dev)], ["dev-lockbox"])
+
+    def test_generated_file_is_frozen(self):
+        from storythread.eval import file_sha
+        self.gen.mkdir()
+        (self.gen / "base.jsonl").write_text(
+            json.dumps({"id": "x", "cases_sha": file_sha(self.dev)}) + "\n",
+            encoding="utf-8")
+        original = self.dev.read_bytes()
+        edited = json.loads(original.decode().splitlines()[0])
+        edited["versions"]["a"]["expected"] = "Changed."
+        status, body = self.request(
+            "POST", "/api/scenes/dev-lockbox", edited)
+        self.assertEqual(status, 400)
+        self.assertIn("generated", body["error"])
+        self.assertEqual(self.dev.read_bytes(), original)
+        (self.gen / "base.jsonl").unlink()
+        status, body = self.request(
+            "POST", "/api/scenes/dev-lockbox", edited)
+        self.assertEqual(status, 200, body)
 
     def test_sibling_swaps_dev_and_test(self):
         self.assertEqual(sibling("eval/dev.jsonl"), Path("eval/test.jsonl"))

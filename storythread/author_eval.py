@@ -4,6 +4,8 @@ An eval scenario file holds rows in the eval/dev.jsonl format that
 scenarios.parse_scenarios reads. The page edits one shared history with two
 variants of a single turn and builds the two message lists itself.
 """
+import hashlib
+import json
 from pathlib import Path
 
 from .data import rows
@@ -67,6 +69,43 @@ def eval_turns(row):
         return len(row["versions"]["a"]["messages"]) - 1
     except (KeyError, TypeError):
         return 0
+
+
+def assert_editable(path, new_text, eval_dir):
+    """Raises ValueError when a generation output hashed the current file.
+
+    path is the eval scenario file. new_text is what would replace it.
+    eval_dir is the directory `eval run` writes (work/eval by default).
+    A byte-for-byte rewrite is allowed. A file that has not been generated
+    against is allowed.
+    """
+    path = Path(path)
+    if not path.is_file():
+        return
+    old = path.read_bytes()
+    new = new_text.encode("utf-8")
+    if hashlib.sha256(old).digest() == hashlib.sha256(new).digest():
+        return
+    digest = hashlib.sha256(old).hexdigest()
+    folder = Path(eval_dir)
+    if not folder.is_dir():
+        return
+    for candidate in sorted(folder.glob("*.jsonl")):
+        try:
+            lines = candidate.read_text(encoding="utf-8").splitlines()
+        except (OSError, UnicodeError):
+            continue
+        for line in lines:
+            if not line.strip():
+                continue
+            try:
+                row = json.loads(line)
+            except json.JSONDecodeError:
+                break
+            if isinstance(row, dict) and row.get("cases_sha") == digest:
+                raise ValueError(
+                    f"{path.name} was already generated against. Delete "
+                    f"the outputs in {folder} before editing it.")
 
 
 def sibling(path):

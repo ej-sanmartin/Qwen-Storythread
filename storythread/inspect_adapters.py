@@ -20,7 +20,7 @@ import struct
 import numpy as np
 
 from .ablate import apply_plan, checkpoint_record
-from .review_ui import assemble_page, page_paths
+from .http_ui import assemble_page, page_paths
 
 HTML = Path(__file__).parent / "web" / "inspect" / "inspect_adapters.html"
 PAGE_STYLE = "inspect_adapters.css"
