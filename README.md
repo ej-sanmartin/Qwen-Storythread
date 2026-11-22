@@ -516,7 +516,8 @@ python -m storythread.eval report eval/test.jsonl
 ```
 
 `run` generates `base` plus one condition per `--adapter LABEL=PATH` (greedy
-decoding, same `--max-tokens`, same prompts, checked by prompt hash), then
+decoding, thinking off, same `--max-tokens`, same prompts, checked by prompt
+hash), then
 builds every rating sheet under `--dir work/eval`. Output rows record the
 case-file hash so the frozen test set is verifiable. It is safe to run again:
 finished conditions are skipped, and a sheet that already exists is never

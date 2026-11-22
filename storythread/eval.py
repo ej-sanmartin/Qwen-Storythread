@@ -67,8 +67,11 @@ def generate(args):
             messages = case["messages"]
             if messages[-1]["role"] != "user":
                 raise ValueError(f"Case {case_id} must end with a user message")
+            # Qwen3.5's default template leaves thinking on, and the model
+            # then writes a planning outline instead of the reply.
             tokens = tokenizer.apply_chat_template(
-                messages, tokenize=True, add_generation_prompt=True, return_dict=False
+                messages, tokenize=True, add_generation_prompt=True,
+                return_dict=False, enable_thinking=False
             )
             start = perf_counter()
             output = reply(model, tokenizer, prompt=tokens, sampler=sampler,
