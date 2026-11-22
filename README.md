@@ -371,6 +371,30 @@ Step time and peak memory land in `runs/pilot-<arm>/train_metrics.json`. The
 model revision is in `models/qwen35-4b-q4/source.json`. Both arms see the same
 row order and seed.
 
+### Inspect the adapters
+
+```bash
+python -m storythread.inspect_adapters --recent runs/pilot-recent \
+  --earlier runs/pilot-earlier --output work/adapter_heatmap.html
+```
+
+Writes one standalone HTML file (open it in a browser; no server needed). It
+reads the saved LoRA files directly, so Qwen is not loaded. Needs `numpy`,
+which `transformers` installs.
+
+- Snapshots (`0000025_adapters.safetensors`, ...) are matched across the two
+  runs by optimizer step; steps missing from either run are listed. The final
+  `adapters.safetensors` is shown once when it duplicates the last snapshot.
+- The scale comes from each run's `adapter_config.json`.
+- **Effective LoRA update RMS** is `|scale| * ||A @ B||_F / sqrt(in * out)`
+  for each projection, computed from rank-by-rank Gram matrices. It measures
+  update size only. How much an update changes behavior is a separate
+  question for ablation.
+- Rows are blocks and columns are projections, with one color scale for both
+  arms and every step. Blank cells have no adapter tensor. Click a cell for
+  its module path, dimensions, rank, and RMS per arm, plus its RMS across the
+  saved steps.
+
 ## 8. Evaluate
 
 Author held-out scenarios in `eval/dev.jsonl` and `eval/test.jsonl` with

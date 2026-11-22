@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Storythread adapter inspection</title>
+<style>
+{{style}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Effective LoRA update RMS</h1>
+  <p class="lede">
+    Update size: how large each projection's low-rank change is, as
+    <code>|scale| &middot; ||A&nbsp;B||<sub>F</sub> / &radic;(in &middot; out)</code>.
+    It does not say how much the update changes behavior; that is a
+    separate question for ablation.
+  </p>
+  <div id="controls">
+    <label>Checkpoint step <select id="step"></select></label>
+    <span id="legend"></span>
+  </div>
+  <ul id="notes"></ul>
+</header>
+<main>
+  <div id="panels"></div>
+  <section id="detail" aria-live="polite"></section>
+</main>
+<script type="application/json" id="report">{{data}}</script>
+<script>
+{{script}}
+</script>
+</body>
+</html>
