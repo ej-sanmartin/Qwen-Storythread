@@ -46,16 +46,17 @@ function traceStrip(ctx, at, x0, x1) {
 // Draws the floor, a faint tint under every other group, and cell lines.
 function drawFloor(ctx, at) {
   const depth = NZ * ZSTEP;
+  const t = theme();
   traceStrip(ctx, at, 0, NX);
-  ctx.fillStyle = "#f3f4f6";
+  ctx.fillStyle = t.floor;
   ctx.fill();
   GROUP_RUNS.forEach((run, k) => {
     if (k % 2) return;
     traceStrip(ctx, at, run.from, run.to + 1);
-    ctx.fillStyle = "rgba(71,98,140,.07)";
+    ctx.fillStyle = t.floorTint;
     ctx.fill();
   });
-  ctx.strokeStyle = "#e1e4e8";
+  ctx.strokeStyle = t.grid;
   ctx.lineWidth = 1;
   ctx.beginPath();
   for (let i = 0; i <= NX; i++) {
@@ -69,20 +70,29 @@ function drawFloor(ctx, at) {
   ctx.stroke();
 }
 
-// Draws text with a white halo so bars behind it never hide it.
+// Draws text with a background-colored halo so bars behind it never hide it.
 function haloText(ctx, text, x, y) {
   ctx.lineWidth = 3;
-  ctx.strokeStyle = "rgba(255,255,255,.92)";
+  ctx.strokeStyle = theme().halo;
   ctx.strokeText(text, x, y);
   ctx.fillText(text, x, y);
 }
 
+// Records a clickable screen rectangle on the scene; clicking it jumps to
+// the glossary rows for ids.
+function addLink(scene, [x, y, w, h], ids, hint) {
+  const path = new Path2D();
+  path.rect(x, y, w, h);
+  scene.links.push({path, ids, hint});
+}
+
 // Draws vertical projection names under the near edge, with a bracket and
-// title under each known group.
-function drawProjectionLabels(ctx, at, room) {
+// title under each known group. Described names and titles become links.
+function drawProjectionLabels(ctx, at, room, scene) {
+  const t = theme();
   const depth = NZ * ZSTEP;
   const nearZ = rotate(NX / 2, 0, 0).d < rotate(NX / 2, 0, depth).d ? 0 : depth;
-  ctx.fillStyle = "#374151";
+  ctx.fillStyle = t.label;
   ctx.font = LABEL_FONT;
   ctx.textAlign = "right";
   const anchors = REPORT.columns.map((c, i) => at(i + 0.5, 0, nearZ));
@@ -93,10 +103,14 @@ function drawProjectionLabels(ctx, at, room) {
     ctx.rotate(-Math.PI / 2);
     ctx.fillText(c.label, 0, 0);
     ctx.restore();
+    if (describe(c.id)) {
+      addLink(scene, [x - 6, y + 8, 13, ctx.measureText(c.label).width + 2],
+              [c.id], `${c.label}: click to read what it means`);
+    }
   });
   // One shared baseline under the lowest label, so group titles line up.
   const base = Math.max(...anchors.map((a) => a[1])) + 8 + room + 12;
-  ctx.strokeStyle = "#9ca3af";
+  ctx.strokeStyle = t.tick;
   ctx.lineWidth = 1;
   ctx.font = GROUP_FONT;
   ctx.textAlign = "center";
@@ -109,8 +123,12 @@ function drawProjectionLabels(ctx, at, room) {
     ctx.lineTo(x1, base);
     ctx.lineTo(x1, base - 4);
     ctx.stroke();
-    ctx.fillStyle = "#4b5563";
+    ctx.fillStyle = t.group;
     ctx.fillText(run.group, (x0 + x1) / 2, base + 15);
+    const half = ctx.measureText(run.group).width / 2 + 4;
+    addLink(scene, [(x0 + x1) / 2 - half, base + 3, 2 * half, 16],
+            groupColumnIds(run.group),
+            `${run.group}: click to read about its projections`);
   }
 }
 
@@ -121,7 +139,7 @@ function drawBlockLabels(ctx, at) {
   const edge = rotate(0, 0, mid).x < rotate(NX, 0, mid).x ? 0 : NX;
   const outward = edge === 0 ? -1 : 1;
   ctx.font = LABEL_FONT;
-  ctx.strokeStyle = "#9ca3af";
+  ctx.strokeStyle = theme().tick;
   ctx.lineWidth = 1;
   REPORT.blocks.forEach((b, j) => {
     const z = (j + 0.5) * ZSTEP;
@@ -131,15 +149,17 @@ function drawBlockLabels(ctx, at) {
     ctx.moveTo(x0, y0);
     ctx.lineTo(x1, y1);
     ctx.stroke();
-    ctx.fillStyle = "#374151";
+    ctx.fillStyle = theme().label;
     ctx.textAlign = x1 < x0 ? "right" : "left";
     haloText(ctx, b === null ? "other" : `block ${b}`,
              x1 + (x1 < x0 ? -4 : 4), y1 + 4);
   });
 }
 
-// Draws every axis label for a scene; room is from labelRoom.
-function drawLabels(ctx, at, room) {
-  drawProjectionLabels(ctx, at, room);
+// Draws every axis label for a scene and rebuilds its click regions; room
+// is from labelRoom.
+function drawLabels(ctx, at, room, scene) {
+  scene.links = [];
+  drawProjectionLabels(ctx, at, room, scene);
   drawBlockLabels(ctx, at);
 }

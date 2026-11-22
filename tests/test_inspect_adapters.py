@@ -243,6 +243,8 @@ class CheckpointTest(unittest.TestCase):
         for placeholder in ("{{style}}", "{{script}}", "{{data}}"):
             self.assertNotIn(placeholder, page)
         self.assertIn("function drawScene(", page)
+        self.assertIn("function goToGlossary(", page)
+        self.assertIn('data-theme="dark"', page)
         self.assertIn("What do these labels mean?", page)
         for label in ("in_proj_a", "in_proj_b", "in_proj_qkv", "in_proj_z",
                       "out_proj", "gate_proj", "up_proj", "down_proj",

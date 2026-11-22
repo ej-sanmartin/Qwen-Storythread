@@ -5,13 +5,11 @@ const HEIGHT = 2;       // world height of a full-scale bar
 const ZSTEP = 1.8;      // world depth of one block row
 const GAP = 0.14;       // empty margin inside each grid cell
 const MIN_H = 0.03;     // keeps zero-height bars visible
-const HINT = "Drag to rotate. Click a bar for details.";
 // Orthographic camera: no perspective, so equal bars stay equal size.
 // A higher pitch looks down more, which exposes the back rows.
 const HOME = {yaw: 0.5, pitch: 0.9};
 const camera = {...HOME};
-const YAW_LIMIT = 1.2;  // keeps the side labels on the outside
-const scenes = [];      // {canvas, bars, caption, low, hits, ctx, dpr}
+const scenes = [];      // {canvas, bars, caption, low, hits, links, ctx, dpr}
 const NX = REPORT.columns.length;
 const NZ = REPORT.blocks.length;
 const COLUMN_INDEX = new Map(REPORT.columns.map((c, i) => [c.id, i]));
@@ -71,8 +69,16 @@ function fitter(w, h, low, bottom) {
   };
 }
 
-// Draws one bar's visible faces and records them for hit testing.
+// Returns the bar's glow color at the given alpha, from its own hue so the
+// glow reads as light from the bar (blue, or amber in the diff view).
+function glowColor(bar, alpha) {
+  return `hsl(${bar.hue} ${bar.sat}% 55% / ${alpha})`;
+}
+
+// Draws one bar's visible faces and records them for hit testing. Every bar
+// glows a little; the selected bar glows more.
 function drawBar(ctx, at, bar, scene) {
+  const t = theme();
   const h = bar.h < 0 ? Math.min(bar.h, -MIN_H) : Math.max(bar.h, MIN_H);
   const axes = [[bar.i + GAP, bar.i + 1 - GAP], [Math.min(0, h), Math.max(0, h)],
                 [(bar.j + GAP) * ZSTEP, (bar.j + 1 - GAP) * ZSTEP]];
@@ -87,25 +93,35 @@ function drawBar(ctx, at, bar, scene) {
       if (k) path.lineTo(x, y); else path.moveTo(x, y);
     });
     path.closePath();
-    ctx.fillStyle = `hsl(${bar.hue} ${bar.sat}% ${bar.light + face.dl}%)`;
+    ctx.fillStyle =
+      `hsl(${bar.hue} ${bar.sat}% ${bar.light + face.dl * t.faceShade}%)`;
+    ctx.shadowColor = glowColor(bar, bar.selected ? t.glowSelected : t.glow);
+    ctx.shadowBlur = (bar.selected ? t.blurSelected : t.blur) * scene.dpr;
     ctx.fill(path);
-    ctx.strokeStyle = "rgba(15,23,42,.16)";
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = t.edge;
     ctx.lineWidth = 0.6;
     ctx.stroke(path);
     scene.hits.push({path, bar});
   }
 }
 
-// Outlines the selected bar's faces on top; the fill is left untouched so
-// color and height still show the update size.
+// Outlines the selected bar's faces on top, with a strong glow; the fill is
+// left untouched so color and height still show the update size.
 function outlineSelected(ctx, scene) {
+  const t = theme();
   const faces = scene.hits.filter((hit) => hit.bar.selected);
+  if (!faces.length) return;
+  ctx.save();
   ctx.lineJoin = "round";
-  for (const [color, width] of [["#fff", 5], ["#1f2937", 2]]) {
+  ctx.shadowColor = glowColor(faces[0].bar, t.glowSelected);
+  ctx.shadowBlur = t.blurSelected * scene.dpr;
+  for (const [color, width] of [[t.outlineHalo, 5], [t.outline, 2]]) {
     ctx.strokeStyle = color;
     ctx.lineWidth = width;
     for (const hit of faces) ctx.stroke(hit.path);
   }
+  ctx.restore();
 }
 
 // Redraws one scene on its canvas for the current camera.
@@ -129,8 +145,8 @@ function drawScene(scene) {
     drawBar(ctx, at, bar, scene);
   }
   outlineSelected(ctx, scene);
-  drawLabels(ctx, at, room);
-  ctx.fillStyle = "#6b7280";
+  drawLabels(ctx, at, room, scene);
+  ctx.fillStyle = theme().caption;
   ctx.font = "12px system-ui";
   ctx.textAlign = "left";
   ctx.fillText(scene.caption, 10, 16);
@@ -139,53 +155,6 @@ function drawScene(scene) {
 // Redraws every scene on screen.
 function drawScenes() {
   scenes.forEach(drawScene);
-}
-
-// Returns the bar under a pointer event, or undefined.
-function pick(scene, event) {
-  const rect = scene.canvas.getBoundingClientRect();
-  const x = (event.clientX - rect.left) * scene.dpr;
-  const y = (event.clientY - rect.top) * scene.dpr;
-  for (let k = scene.hits.length - 1; k >= 0; k--) {
-    if (scene.ctx.isPointInPath(scene.hits[k].path, x, y)) {
-      return scene.hits[k].bar;
-    }
-  }
-  return undefined;
-}
-
-// Wires drag-to-rotate, hover readout, and click-to-select on a scene.
-function attach(scene, readout) {
-  const canvas = scene.canvas;
-  let drag = null;
-  canvas.addEventListener("pointerdown", (e) => {
-    drag = {x: e.clientX, y: e.clientY, last: [e.clientX, e.clientY],
-            moved: false};
-    canvas.setPointerCapture(e.pointerId);
-  });
-  canvas.addEventListener("pointermove", (e) => {
-    if (!drag) {
-      const bar = pick(scene, e);
-      readout.textContent = bar ? bar.label : HINT;
-      canvas.style.cursor = bar ? "pointer" : "grab";
-      return;
-    }
-    if (Math.abs(e.clientX - drag.x) + Math.abs(e.clientY - drag.y) > 4) {
-      drag.moved = true;
-    }
-    if (!drag.moved) return;
-    camera.yaw = clamp(camera.yaw + (e.clientX - drag.last[0]) * 0.01,
-                       -YAW_LIMIT, YAW_LIMIT);
-    camera.pitch = clamp(camera.pitch + (e.clientY - drag.last[1]) * 0.006,
-                         0.35, 1.4);
-    drag.last = [e.clientX, e.clientY];
-    drawScenes();
-  });
-  canvas.addEventListener("pointerup", (e) => {
-    const bar = drag && !drag.moved ? pick(scene, e) : null;
-    drag = null;
-    if (bar) { state.module = bar.path; render(); }
-  });
 }
 
 // Returns a description such as "block 29 · in_proj_a".
@@ -214,7 +183,7 @@ function scenePanel(title, bars, caption, low, tall, note) {
     "aria-label": `${title}: 3D bar chart. The Flat grid view is the ` +
                   "keyboard-friendly version."});
   const readout = el("p", {class: "readout"}, HINT);
-  const scene = {canvas, bars, caption, low, hits: []};
+  const scene = {canvas, bars, caption, low, hits: [], links: []};
   scenes.push(scene);
   attach(scene, readout);
   const notes = note ? [el("p", {class: "absent"}, note)] : [];
@@ -244,8 +213,7 @@ function diffPanel() {
     const pct = diffPercent(path, state.step);
     if (pct === undefined) return null;
     const t = Math.min(1, Math.abs(pct) / DIFF_MAX);
-    const color = pct >= 0 ? {hue: 212, sat: 45, light: 90 - 48 * t}
-                           : {hue: 26, sat: 55, light: 90 - 46 * t};
+    const color = pct >= 0 ? tone(212, 45, t) : tone(26, 55, t);
     return {h: Math.sign(pct) * t * HEIGHT, ...color,
             label: `${where(info)} \u00b7 ${a} is ${signed(pct)} vs ${b}`};
   });

@@ -404,6 +404,15 @@ which `transformers` installs.
   Axis labels stay the exact projection names from the checkpoint keys. The
   page also has a collapsible "What do these labels mean?" glossary below the
   chart and a "How to read this" box.
+- Bars have a soft glow, and the selected bar glows more. The **Dark mode**
+  button switches themes; the page follows the system setting until you
+  press it, then remembers your choice in the browser. Dark mode inverts
+  the ramp (dim to bright), so a bigger update still stands out.
+- For a recognized Qwen3.5 checkpoint, click a projection label or a group
+  title on the chart (or a column header in the flat grid) to open the
+  glossary, scroll to that row, and flash it. A group title flashes all of
+  its rows. Block labels are not links: the glossary describes projections,
+  not blocks.
 - Height and color show the size of the learned correction only. A taller
   `in_proj_a` bar alone cannot tell us whether the model retains more
   context or remembers a story event better. Note that `in_proj_a` and

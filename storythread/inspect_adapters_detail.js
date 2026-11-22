@@ -112,8 +112,27 @@ function renderGlossary() {
   if (!ARCHITECTURE_KNOWN) return;
   const head = el("tr", {}, ...["Group", "Label", "Description"].map(
     (name) => el("th", {scope: "col"}, name)));
-  const rows = GLOSSARY.map(([prefix, label, text]) => el("tr", {},
-    el("td", {}, GROUPS[prefix]), el("td", {}, el("code", {}, label)),
-    el("td", {}, text)));
+  const rows = GLOSSARY.map(([prefix, label, text]) =>
+    el("tr", {"data-column": `${prefix}.${label}`, tabindex: "-1"},
+      el("td", {}, GROUPS[prefix]), el("td", {}, el("code", {}, label)),
+      el("td", {}, text)));
   $("glossary-table").replaceChildren(head, ...rows);
+}
+
+// Opens the glossary, scrolls to the rows for the given column ids, and
+// briefly highlights them. Ids with no glossary row are ignored.
+function goToGlossary(ids) {
+  const rows = [...$("glossary-table").querySelectorAll("tr[data-column]")]
+    .filter((row) => ids.includes(row.dataset.column));
+  if (!rows.length) return;
+  $("glossary").open = true;
+  const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  rows[0].scrollIntoView({block: "center", behavior: calm ? "auto" : "smooth"});
+  rows[0].focus({preventScroll: true});
+  for (const row of rows) {
+    row.classList.remove("flash");
+    void row.offsetWidth;  // Restarts the animation on repeat clicks.
+    row.classList.add("flash");
+    setTimeout(() => row.classList.remove("flash"), 1800);
+  }
 }

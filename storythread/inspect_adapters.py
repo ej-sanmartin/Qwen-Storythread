@@ -23,8 +23,9 @@ from .review_ui import assemble_page, page_paths
 
 HTML = Path(__file__).with_name("inspect_adapters.html")
 PAGE_STYLE = "inspect_adapters.css"
-PAGE_SCRIPTS = ("inspect_adapters.js", "inspect_adapters_glossary.js",
-                "inspect_adapters_axes.js", "inspect_adapters_3d.js",
+PAGE_SCRIPTS = ("inspect_adapters.js", "inspect_adapters_theme.js",
+                "inspect_adapters_glossary.js", "inspect_adapters_axes.js",
+                "inspect_adapters_3d.js", "inspect_adapters_input.js",
                 "inspect_adapters_detail.js")
 METRIC = "Effective LoRA update RMS"
 SNAPSHOT = re.compile(r"^(\d+)_adapters\.safetensors$")

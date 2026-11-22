@@ -1,7 +1,7 @@
 "use strict";
 // Adapter heatmap page. All data comes from the embedded #report JSON.
 const REPORT = JSON.parse(document.getElementById("report").textContent);
-const COLORS = {recent: "#3d6a9e", earlier: "#b7791f"};
+const COLORS = {recent: "#4a7fc0", earlier: "#c98a2b"};
 const SVG_NS = "http://www.w3.org/2000/svg";
 const PATHS = new Map();  // "block|column" -> module path
 for (const [path, info] of Object.entries(REPORT.modules)) {
@@ -41,17 +41,24 @@ function signed(pct) {
   return `${pct >= 0 ? "+" : "\u2212"}${Math.abs(pct).toFixed(1)}%`;
 }
 
-// Returns the {hue, sat, light} color for t in 0..1 on the shared scale.
+// Returns {hue, sat, light} for t in 0..1: pale to deep on the light theme,
+// dim to bright on the dark theme, so a bigger update always stands out.
+function tone(hue, sat, t) {
+  return {hue, sat, light: isDark() ? 32 + 34 * t : 90 - 50 * t};
+}
+
+// Returns the blue color for t in 0..1 on the one shared scale.
 function ramp(t) {
-  return {hue: 212, sat: 40 + 10 * t, light: 90 - 50 * t};
+  return tone(212, 40 + 10 * t, t);
 }
 
 // Returns the cell colors for a value on the one shared color scale.
 function shade(value) {
   const t = Math.min(1, value / (REPORT.max || 1));
   const c = ramp(t);
+  const lightText = isDark() ? t <= 0.6 : t > 0.5;
   return `background:hsl(${c.hue} ${c.sat}% ${c.light}%);` +
-         `color:${t > 0.5 ? "#fff" : "#18181b"}`;
+         `color:${lightText ? "#fff" : "#18181b"}`;
 }
 
 // Returns the heatmap cell for one arm, block, and projection column.
@@ -68,12 +75,23 @@ function cell(arm, block, column) {
   }, fmt(value));
 }
 
+// Returns a flat-grid column header; a button to the glossary when the
+// projection has a description, else plain text with the exact name.
+function columnHeader(column) {
+  if (!describe(column.id)) {
+    return el("span", {class: "col", title: column.id}, column.label);
+  }
+  return el("button", {class: "col", type: "button",
+    title: `${column.id}: jump to its description`,
+    onclick: () => goToGlossary([column.id])}, column.label);
+}
+
 // Returns one arm's heatmap panel for the selected step.
 function panel(arm) {
   const present = String(state.step) in REPORT.rms[arm];
   const grid = el("div", {class: "grid", style: `--cols:${REPORT.columns.length}`},
     el("span"),
-    ...REPORT.columns.map((c) => el("span", {class: "col", title: c.id}, c.label)));
+    ...REPORT.columns.map(columnHeader));
   for (const block of REPORT.blocks) {
     grid.append(el("span", {class: "row"}, block === null ? "other" : `${block}`));
     for (const column of REPORT.columns) grid.append(cell(arm, block, column));
@@ -112,6 +130,7 @@ function render() {
 
 // Fills the step selector, notes, and legend, then draws.
 function boot() {
+  initTheme();
   const select = $("step");
   for (const step of REPORT.steps) {
     const gaps = REPORT.arms.filter((a) => REPORT.missing[a].includes(step));

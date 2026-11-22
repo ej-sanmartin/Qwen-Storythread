@@ -25,6 +25,13 @@ const GLOSSARY = [
 const GLOSSARY_BY_ID = new Map(GLOSSARY.map(([prefix, label, text]) =>
   [`${prefix}.${label}`, {group: GROUPS[prefix], label, text}]));
 
+// Returns the column ids of every glossary row in a group title such as
+// "Feed-forward".
+function groupColumnIds(group) {
+  return GLOSSARY.filter(([prefix]) => GROUPS[prefix] === group)
+    .map(([prefix, label]) => `${prefix}.${label}`);
+}
+
 // True when the report detected a Qwen3.5 checkpoint from its tensor paths.
 const ARCHITECTURE_KNOWN = REPORT.architecture === "qwen3_5";
 
