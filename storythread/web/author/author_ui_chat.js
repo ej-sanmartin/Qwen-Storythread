@@ -1,5 +1,10 @@
 // ---- Chat ---------------------------------------------------------------
 
+// Returns an evidence chip label such as "Recent evidence \u00b7 3 turns back".
+function chipLabel(name, back) {
+  return `${TITLE[name]} \u00b7 ${plural(back)} back`;
+}
+
 // Returns {turn key or "self": [{name, quote}]} for both endings.
 function citations() {
   const map = {};
@@ -11,54 +16,11 @@ function citations() {
   return map;
 }
 
-// Writes text into p, underlining each cited quote.
-function richText(p, text, cites) {
-  const spans = [];
-  cites.forEach((cite) => {
-    const at = cite.quote ? text.indexOf(cite.quote) : -1;
-    if (at >= 0) spans.push({at: at, end: at + cite.quote.length, name: cite.name});
-  });
-  spans.sort((a, b) => a.at - b.at);
-  let pos = 0;
-  spans.forEach((span) => {
-    if (span.at < pos) return;
-    p.append(text.slice(pos, span.at),
-             el("mark", {class: span.name, text: text.slice(span.at, span.end)}));
-    pos = span.end;
-  });
-  p.append(text.slice(pos));
-}
-
-// Returns one chat bubble with its speaker line and evidence chips.
-function bubble(role, label, text, cites, target) {
-  const meta = el("div", {class: "meta"}, el("b", {text: label}));
-  cites.forEach((cite) => meta.append(el("span", {
-    class: "chip " + cite.name,
-    text: `${TITLE[cite.name]} \u00b7 ${plural(cite.back)} back`,
-  })));
-  const empty = !text.trim();
-  const p = el("p", {class: "bubble" + (empty ? " empty" : "")});
-  if (empty) p.textContent = "(empty)";
-  else richText(p, text, cites);
-  return el("div", {class: "msg " + role, "data-target": target}, meta, p);
-}
-
-function cardView() {
-  return el("div", {class: "card", "data-target": "scene"},
-    el("b", {text: "Character card"}),
-    el("span", {
-      class: "hint",
-      text: ` \u00b7 ${state.scenario_id || "no id"} \u00b7 group ` +
-        (state.group || "\u2014"),
-    }),
-    el("p", {text: state.system.trim() || "(empty)"}));
-}
-
 function endingView(name) {
   const b = state.branches[name];
   const index = evidenceIndex(b);
   const own = b.source === "self" && !b.missing
-    ? [{name: name, quote: b.evidence, back: 1}] : [];
+    ? [{name: name, quote: b.evidence, label: chipLabel(name, 1)}] : [];
   let line = "Evidence: not chosen yet";
   if (b.missing) line = "Cited turn was removed.";
   else if (index !== null) {
@@ -82,7 +44,7 @@ function renderChat() {
   const total = state.history.length;
   const log = el("div", {class: "log"}, ...state.history.map((turn, i) => {
     const mine = (cites[turn.key] || []).map(
-      (cite) => ({...cite, back: total + 1 - i}));
+      (cite) => ({...cite, label: chipLabel(cite.name, total + 1 - i)}));
     return bubble(turn.role, `${i} \u00b7 ${SPEAKER[turn.role] || turn.role}`,
                   turn.content, mine, "turn:" + turn.key);
   }));
@@ -95,65 +57,3 @@ function renderChat() {
   markSelected();
   markBad();
 }
-
-function markSelected() {
-  document.querySelectorAll("#chat [data-target]").forEach((node) => {
-    node.classList.toggle("sel", node.dataset.target === ui.selected);
-  });
-}
-
-function markBad() {
-  const bad = new Set(ui.showErrors ? problems().map((p) => p.target) : []);
-  document.querySelectorAll("#chat [data-target]").forEach((node) => {
-    node.classList.toggle("bad", bad.has(node.dataset.target));
-  });
-}
-
-// Opens target ("scene", "turn:<key>", "ending:<name>") in the sidebar.
-function select(target) {
-  ui.selected = target;
-  renderFields();
-  const node = document.querySelector(`#chat [data-target="${target}"]`);
-  if (node) node.scrollIntoView({block: "nearest"});
-}
-
-// Drags the sidebar width and remembers it for the next visit.
-function setupSplit() {
-  const split = $("split");
-  const narrow = "(max-width: 900px)";
-  function applySide(px) {
-    const cols = document.querySelector(".cols");
-    const room = cols.clientWidth || window.innerWidth;
-    const min = 260;
-    const max = Math.max(min, room - 280);
-    const width = Math.min(max, Math.max(min, px));
-    document.documentElement.style.setProperty("--side", width + "px");
-  }
-  const saved = Number(localStorage.getItem("author-side"));
-  if (saved && !matchMedia(narrow).matches) applySide(saved);
-  split.addEventListener("pointerdown", (event) => {
-    if (event.button !== 0 || matchMedia(narrow).matches) return;
-    try {
-      split.setPointerCapture(event.pointerId);
-    } catch (error) {
-      // The pointer can already be gone.
-    }
-    document.body.classList.add("resizing");
-    const box = document.querySelector(".cols").getBoundingClientRect();
-    function move(ev) { applySide(box.right - ev.clientX); }
-    function up() {
-      document.body.classList.remove("resizing");
-      split.removeEventListener("pointermove", move);
-      split.removeEventListener("pointerup", up);
-      split.removeEventListener("pointercancel", up);
-      const width = getComputedStyle(document.documentElement)
-        .getPropertyValue("--side");
-      localStorage.setItem("author-side", String(parseInt(width, 10)));
-    }
-    split.addEventListener("pointermove", move);
-    split.addEventListener("pointerup", up);
-    split.addEventListener("pointercancel", up);
-    event.preventDefault();
-  });
-}
-setupSplit();

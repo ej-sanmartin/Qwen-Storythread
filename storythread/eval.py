@@ -122,9 +122,9 @@ def blind(args):
     write_rows(args.key, key)
 
 
-def score(args):
-    """Counts blind engagement preferences per condition."""
-    decisions, key = by_id(args.ratings), by_id(args.key)
+def tally(ratings, key_path):
+    """Returns blind engagement preference counts per condition."""
+    decisions, key = by_id(ratings), by_id(key_path)
     if decisions.keys() != key.keys():
         raise ValueError("Rate every case exactly once.")
     counts = {"tie": 0}
@@ -136,7 +136,12 @@ def score(args):
             counts.setdefault(key[case_id][side], 0)
         winner = "tie" if choice == "tie" else key[case_id][choice]
         counts[winner] = counts.get(winner, 0) + 1
-    print(json.dumps({"cases": len(decisions), "preferred": counts}, indent=2))
+    return {"cases": len(decisions), "preferred": counts}
+
+
+def score(args):
+    """Prints blind engagement preference counts per condition."""
+    print(json.dumps(tally(args.ratings, args.key), indent=2))
 
 
 def validate(args):
@@ -185,8 +190,8 @@ def cell(count, total):
             "percent": round(100 * count / total, 1) if total else None}
 
 
-def continuity(args):
-    """Scores scenarios where both versions satisfy their expected behavior."""
+def continuity_report(args):
+    """Returns, per condition, how often both versions satisfy expectations."""
     cases, sheet_rows, key = load_cases(args.cases), by_id(args.sheet), by_id(args.key)
     if not (cases.keys() == sheet_rows.keys() == key.keys()):
         raise ValueError("Sheet, key, and cases must cover the same IDs.")
@@ -214,10 +219,16 @@ def continuity(args):
             "both_versions": cell(sum(c for c, _ in ranges.values()), len(scenarios)),
             "single_versions": cell(sum(marks.values()), len(marks)),
             "by_evidence_distance_turns": {l: cell(*v) for l, v in ranges.items()}}
-    print(json.dumps(result, indent=2))
+    return result
+
+
+def continuity(args):
+    """Prints the continuity report."""
+    print(json.dumps(continuity_report(args), indent=2))
 
 
 def main():
+    from . import eval_flow  # imported late: eval_flow imports this module
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
     run = commands.add_parser("generate")
@@ -247,9 +258,11 @@ def main():
     for field in ("cases", "sheet", "key"):
         primary.add_argument(field)
     primary.add_argument("--edges", default="4,12", help="ascending turn-distance edges")
+    eval_flow.add_commands(commands)
     args = parser.parse_args()
     {"generate": generate, "blind": blind, "score": score, "validate": validate,
-     "sheet": sheet, "continuity": continuity}[args.command](args)
+     "sheet": sheet, "continuity": continuity, "run": eval_flow.run,
+     "report": eval_flow.report}[args.command](args)
 
 
 if __name__ == "__main__":

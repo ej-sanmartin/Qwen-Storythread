@@ -16,6 +16,7 @@
   }
   * { box-sizing: border-box; }
   [hidden] { display: none !important; }
+  body[data-kind="eval"] [data-scenes-only] { display: none; }
   html, body { background: var(--bg); color: var(--text); }
   body {
     margin: 0; height: 100vh; display: flex; flex-direction: column;
@@ -137,11 +138,11 @@
     background: none; color: inherit; text-decoration: underline;
     text-decoration-thickness: 2px; text-underline-offset: 3px;
   }
-  mark.recent { text-decoration-color: #38bdf8; }
-  mark.earlier { text-decoration-color: #f59e0b; }
+  mark.recent, mark.a { text-decoration-color: #38bdf8; }
+  mark.earlier, mark.b { text-decoration-color: #f59e0b; }
   .chip { padding: 0 0.4rem; border-radius: 999px; font-weight: 600; }
-  .chip.recent { background: #38bdf8; color: #082f49; }
-  .chip.earlier { background: #f59e0b; color: #451a03; }
+  .chip.recent, .chip.a { background: #38bdf8; color: #082f49; }
+  .chip.earlier, .chip.b { background: #f59e0b; color: #451a03; }
   .add-turn { margin: 0.6rem 0 0; }
   .edge {
     display: flex; align-items: center; gap: 0.6rem; margin: 1.2rem 0 0.4rem;
@@ -161,6 +162,7 @@
   .ending h3 { margin: 0.2rem 0 0; }
   .ending .msg { max-width: 94%; }
   .ending.missing { border-color: var(--bad); }
+  .expected { margin: 0.4rem 0 0; white-space: pre-wrap; }
   .ev { margin: 0.6rem 0 0; font-size: 0.82rem; color: var(--muted); }
   .msg.sel .bubble, .card.sel, .ending.sel {
     outline: 2px solid var(--info); outline-offset: 2px;

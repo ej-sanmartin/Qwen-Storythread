@@ -95,8 +95,11 @@ python -m storythread.runtime setup-model            # freezes models/qwen35-4b-
 
 The scripts live in the `storythread/` package. Run each from the repository
 root as `python -m storythread.<name>` (`data`, `judge`, `runtime`, `eval`,
-`review_ui`); `export`, `scenarios`, and `splits` are helpers. Configs
-(`pilot.yaml`, `smoke.yaml`), `fixtures/`, and `tests/` stay at the root.
+`review_ui`, `author_ui`, `rate_ui`, `inspect_adapters`); `export`,
+`scenarios`, `splits`, `author_eval`, `eval_flow`, and `ablate` are helpers.
+Each page's HTML, CSS, and JavaScript live in `storythread/web/<tool>/`
+(`author`, `review`, `rate`, `inspect`). Configs (`pilot.yaml`,
+`smoke.yaml`), `fixtures/`, and `tests/` stay at the root.
 
 `data.py`, `review_ui.py`, `eval.py` (except `generate`), and the tests use
 only the standard library. `mlx-lm` 0.32.2 is the version this guide was
@@ -477,43 +480,80 @@ original characters and histories. Keep the test set frozen: tune on dev only.
 Each scenario has two versions where one earlier event differs, the final user
 prompt is identical, and the expected reply changes.
 
+### Author the eval scenarios
+
+The same editor as step 3 writes them. `--kind eval` switches it to eval
+scenarios and defaults to `eval/dev.jsonl`:
+
+```bash
+python -m storythread.author_ui --kind eval                            # eval/dev.jsonl
+python -m storythread.author_ui --kind eval --scenes eval/test.jsonl   # eval/test.jsonl
+```
+
+Open http://127.0.0.1:8766/. The header shows which file you are editing. You
+write the shared history once, mark one turn as the evidence turn, and type
+its two variants (A and B) with a quote from each. Then write the final player
+turn and what a correct reply does in each version. The page builds both
+`messages` lists itself and stores them in the schema in step 9. Saving checks
+the same rules as `eval validate`, and a scenario that reuses a group or card
+from the sibling file (`dev.jsonl` and `test.jsonl` check each other) is
+refused. Write `test.jsonl` before the first `generate` and then leave it
+alone: the hash recorded in every output shows whether it changed.
+
+### Run it
+
 ```bash
 python -m storythread.eval validate eval/dev.jsonl eval/test.jsonl   # schema + dev/test disjoint
+python -m storythread.eval run eval/test.jsonl \
+  --adapter recent=runs/pilot-recent --adapter earlier=runs/pilot-earlier
+python -m storythread.rate_ui                                        # rate in the browser
+python -m storythread.eval report eval/test.jsonl
+```
+
+`run` generates `base` plus one condition per `--adapter LABEL=PATH` (greedy
+decoding, same `--max-tokens`, same prompts, checked by prompt hash), then
+builds every rating sheet under `--dir work/eval`. Output rows record the
+case-file hash so the frozen test set is verifiable. It is safe to run again:
+finished conditions are skipped, and a sheet that already exists is never
+replaced, since it holds your ratings. Adding an adapter later needs the old
+sheets deleted first, and `run` says so.
+
+`rate_ui` (http://127.0.0.1:8769/, `--dir`, `--port`) shows one case at a time
+with the story, the evidence, and the expected behavior. Ratings save as you
+click. It reads only the blinded sheets; the key files stay on disk. Tabs show
+progress per sheet.
+
+`report` scores every sheet that is fully rated, shows `n of m rated` for the
+rest, prints the result, and writes `work/eval/report.json`.
+
+**Primary metric: continuity.** Percent of scenarios where the model acts on the
+correct story state in both versions. On the continuity tab, mark each reply
+true or false against `expected` and `evidence`; in-character paraphrases
+count. Replies are shuffled per case and labeled `R1..R3`. The report gives,
+per condition, counts with denominators for both versions satisfied, for
+single versions, and for each evidence-distance bucket (`--edges 4,12` turns
+by default).
+
+**Separate score: engagement.** Blind pairwise for every pair of conditions,
+question: "Which character would you rather keep chatting with?" Pick A, B, or
+tie on each pair's tab. The report counts wins per condition.
+
+### Individual commands
+
+`run`, `rate_ui`, and `report` wrap these, which still work on their own:
+
+```bash
 mkdir -p work/eval
 python -m storythread.eval generate --label base eval/test.jsonl work/eval/base.jsonl
 python -m storythread.eval generate --label recent --adapter runs/pilot-recent \
   eval/test.jsonl work/eval/recent.jsonl
-python -m storythread.eval generate --label earlier --adapter runs/pilot-earlier \
-  eval/test.jsonl work/eval/earlier.jsonl
-```
-
-Greedy decoding, same `--max-tokens`, same prompts (checked by prompt hash).
-Output rows record the case-file hash so the frozen test set is verifiable.
-
-**Primary metric: continuity.** Percent of scenarios where the model acts on the
-correct story state in both versions.
-
-```bash
 python -m storythread.eval sheet eval/test.jsonl work/eval/sheet.jsonl work/eval/key.jsonl \
-  --outputs work/eval/base.jsonl work/eval/recent.jsonl work/eval/earlier.jsonl
-# Reviewer: in sheet.jsonl set "satisfies": true/false on every reply, judging
-# it against "expected" and "evidence". In-character paraphrases count.
-python -m storythread.eval continuity eval/test.jsonl work/eval/sheet.jsonl work/eval/key.jsonl \
-  > work/eval/continuity.json
-```
-
-Replies are shuffled per case and labeled `R1..R3`; the key is separate. The
-report gives, per condition, counts with denominators for both versions
-satisfied, for single versions, and for each evidence-distance bucket
-(`--edges 4,12` turns by default).
-
-**Separate score: engagement.** Blind pairwise, question: "Which character would
-you rather keep chatting with?"
-
-```bash
+  --outputs work/eval/base.jsonl work/eval/recent.jsonl
+# Reviewer: in sheet.jsonl set "satisfies": true/false on every reply.
+python -m storythread.eval continuity eval/test.jsonl work/eval/sheet.jsonl work/eval/key.jsonl
 python -m storythread.eval blind eval/test.jsonl work/eval/base.jsonl work/eval/recent.jsonl \
   work/eval/blind-base-recent.jsonl work/eval/blind-base-recent-key.jsonl
-# Reviewer: set "winner" to A, B, or tie. Repeat for base/earlier, recent/earlier.
+# Reviewer: set "winner" to A, B, or tie.
 python -m storythread.eval score work/eval/blind-base-recent.jsonl work/eval/blind-base-recent-key.jsonl
 ```
 
@@ -572,8 +612,8 @@ same turn, differ there, and share the system card and final user prompt.
 | Adapters, step time, peak memory | `runs/pilot-<arm>/` (`train_metrics.json`) |
 | Generations | `work/eval/<label>.jsonl` |
 | Rating sheet and key | `work/eval/sheet.jsonl`, `work/eval/key.jsonl` |
-| Continuity report | `work/eval/continuity.json` |
-| Engagement sheets and keys | `work/eval/blind-*.jsonl` |
+| Engagement sheets and keys | `work/eval/blind-<a>-<b>.jsonl`, `work/eval/blind-<a>-<b>-key.jsonl` |
+| Continuity and engagement report | `work/eval/report.json` |
 
 `work/`, `runs/`, `models/`, downloaded PIPPA files, `private/`, and
 `transcripts/` are ignored by Git.
@@ -590,8 +630,8 @@ python -m storythread.data prepare fixtures/pippa-sample.jsonl fixtures/review.j
 python -m storythread.eval validate fixtures/eval-dev.jsonl fixtures/eval-test.jsonl
 ```
 
-The tests cover export, preflight, sheet generation, scoring, the local
-review page, and the local authoring page. Model generation is replaced by
+The tests cover export, preflight, sheet generation, scoring, `eval run` and
+`eval report`, the local review, authoring (scenes and eval), and rating pages. Model generation is replaced by
 synthetic outputs, and reviewer ratings are scripted.
 
 | Check | Status |
@@ -601,6 +641,7 @@ synthetic outputs, and reviewer ratings are scripted.
 | Author UI: a scene saved in the editor exports into both arms | Verified on fixture |
 | Preflight measurement and flags (fake tokenizer in tests; Qwen3.5-4B tokenizer and chat template checked by hand on the fixture export) | Verified |
 | Eval validation, blind sheet, continuity scoring with distance buckets, engagement scoring | Verified on fixture |
+| Eval authoring mode, `eval run`/`eval report`, rating page (generation replaced by synthetic outputs) | Verified on fixture |
 | 512-token smoke run (`runtime.py train -- --config smoke.yaml`) | Needs local Apple Silicon run |
 | 1,024 and 2,048 probes, peak memory on 16 GB | Needs local Apple Silicon run |
 | `runtime.py train` metrics hook (`train_metrics.json`) during real training | Needs local Apple Silicon run |

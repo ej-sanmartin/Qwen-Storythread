@@ -1,36 +1,5 @@
 // ---- Sidebar ------------------------------------------------------------
 
-// Returns a labeled input (rows = 0) or textarea bound to set().
-function field({label, value, set, hint, rows = 0, id}) {
-  const control = rows
-    ? el("textarea", {rows: rows, id: id})
-    : el("input", {type: "text", id: id, autocomplete: "off"});
-  control.value = value;
-  control.addEventListener("input", () => {
-    set(control.value);
-    touch();
-    renderChat();
-  });
-  return el("label", {}, el("span", {text: label}), control,
-            hint ? el("span", {class: "hint", text: hint}) : null);
-}
-
-function sceneFields() {
-  return [
-    el("h2", {text: "Scene"}),
-    field({label: "scenario_id", value: state.scenario_id,
-           set: (v) => { state.scenario_id = v; },
-           hint: "A unique label for this scene. Rename it if you like."}),
-    field({label: "group", value: state.group,
-           set: (v) => { state.group = v; },
-           hint: "Scenes of one character or world share a group, so they " +
-             "stay together in the train/valid split."}),
-    field({label: "Character card", value: state.system, rows: 6,
-           set: (v) => { state.system = v; },
-           hint: "The system prompt both endings are trained with."}),
-  ];
-}
-
 // Returns the current highlighted text for the selected bubble or textarea.
 function selectedText() {
   const area = $("turn-text");
@@ -60,20 +29,6 @@ function useAsEvidence(name, turn, note) {
   touch();
   renderChat();
   renderFields();
-}
-
-function insertTurn(index, role) {
-  const turn = {key: newKey(), role: role, content: ""};
-  state.history.splice(index, 0, turn);
-  ui.selected = "turn:" + turn.key;
-  touch();
-  renderChat();
-  renderFields();
-}
-
-function addTurn() {
-  const last = state.history[state.history.length - 1];
-  insertTurn(state.history.length, last ? opposite(last.role) : "assistant");
 }
 
 // Removes a turn. Endings that cited it keep their quote but are flagged.

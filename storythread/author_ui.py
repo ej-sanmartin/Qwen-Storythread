@@ -1,9 +1,11 @@
-"""Local editor for authored/scenes.jsonl.
+"""Local editor for authored/scenes.jsonl or eval/dev.jsonl.
 
-Serves one HTML page on 127.0.0.1. Saves scene pairs in the authored format.
-Token checks use the same measurement as runtime.preflight.
+Serves one HTML page on 127.0.0.1. Saves scene pairs in the authored format,
+or with --kind eval, two-version eval scenarios. Token checks use the same
+measurement as runtime.preflight.
 
 Run: python -m storythread.author_ui
+     python -m storythread.author_ui --kind eval
 """
 import argparse
 import json
@@ -12,6 +14,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
+from .author_eval import (
+    check_eval, eval_from, eval_turns, sibling)
 from .data import rows
 from .export import authored_example
 from .review_ui import (
@@ -22,12 +26,30 @@ from .scenarios import BRANCHES, parse_authored
 PORT = 8766
 HTML = Path(__file__).parent / "web" / "author" / "author_ui.html"
 PAGE_STYLE = "author_ui.css"
-PAGE_SCRIPTS = (
-    "author_ui_state.js",
-    "author_ui_chat.js",
-    "author_ui_fields.js",
-    "author_ui_pages.js",
+COMMON_SCRIPTS = (
+    "author_ui_core.js",
+    "author_ui_shared.js",
+    "author_ui_list.js",
 )
+SCRIPTS = {
+    "scenes": COMMON_SCRIPTS + (
+        "author_ui_state.js",
+        "author_ui_chat.js",
+        "author_ui_fields.js",
+        "author_ui_pages.js",
+        "author_ui_start.js",
+    ),
+    "eval": COMMON_SCRIPTS + (
+        "author_ui_eval_state.js",
+        "author_ui_eval_chat.js",
+        "author_ui_eval_fields.js",
+        "author_ui_start.js",
+    ),
+}
+DEFAULT_FILES = {
+    "scenes": "authored/scenes.jsonl",
+    "eval": "eval/dev.jsonl",
+}
 
 
 def as_text(value):
@@ -127,12 +149,33 @@ def load_tokenizer(model):
 class Store:
     """Reads and writes authored scenes, one saved row at a time."""
 
-    def __init__(self, path, tokenizer=None, model=DEFAULT_MODEL):
-        """path is the JSONL file. tokenizer skips loading model."""
+    def __init__(self, path, tokenizer=None, model=DEFAULT_MODEL,
+                 kind="scenes", other=None):
+        """path is the JSONL file. tokenizer skips loading model.
+
+        kind is "scenes" (authored pairs) or "eval" (two-version eval
+        scenarios). other is the sibling eval file to stay disjoint from.
+        """
         self.path = Path(path)
         self.model = model
+        self.kind = kind
+        self.other = other
         self._tokenizer = tokenizer
         self.lock = threading.Lock()
+
+    def _clean(self, payload):
+        """Returns the stripped row for a request body."""
+        if self.kind == "eval":
+            return eval_from(payload)
+        return scene_from(payload)
+
+    def _check(self, collected):
+        """Raises ValueError unless every row would be valid together."""
+        if self.kind == "eval":
+            check_eval(collected, self.other)
+            return
+        require_quotes(collected)
+        parse_authored(collected)
 
     def _lines(self):
         """Returns (lines, newline, trailing) for the scene file."""
@@ -156,11 +199,12 @@ class Store:
                 raise ValueError(
                     "Authored file has a line that is not an object.")
             turns = row.get("history")
+            count = len(turns) if isinstance(turns, list) else 0
             items.append({
                 "order": order,
                 "scenario_id": row.get("scenario_id") or "",
                 "group": row.get("group") or "",
-                "turns": len(turns) if isinstance(turns, list) else 0,
+                "turns": eval_turns(row) if self.kind == "eval" else count,
             })
         return items
 
@@ -186,7 +230,7 @@ class Store:
         append. Returns the row written. Raises KeyError if the id is
         missing, or ValueError if the file would be invalid.
         """
-        scene = scene_from(payload)
+        scene = self._clean(payload)
         with self.lock:
             lines, newline, trailing = self._lines()
             written, collected = [], []
@@ -215,8 +259,7 @@ class Store:
                 stored = scene
             elif not found:
                 raise KeyError(original_id)
-            require_quotes(collected)
-            parse_authored(collected)
+            self._check(collected)
             text = newline.join(written)
             if trailing:
                 text += newline
@@ -248,8 +291,7 @@ class Store:
             if removed is None:
                 raise KeyError(scenario_id)
             if collected:
-                require_quotes(collected)
-                parse_authored(collected)
+                self._check(collected)
             text = newline.join(written)
             if written and trailing:
                 text += newline
@@ -296,9 +338,15 @@ class Store:
         return report
 
 
-def make_server(scenes, port, tokenizer=None, model=DEFAULT_MODEL):
-    """Returns a server bound to 127.0.0.1. port 0 picks a free port."""
-    store = Store(scenes, tokenizer=tokenizer, model=model)
+def make_server(scenes, port, tokenizer=None, model=DEFAULT_MODEL,
+                kind="scenes", other=None):
+    """Returns a server bound to 127.0.0.1. port 0 picks a free port.
+
+    kind and other are described on Store.
+    """
+    store = Store(scenes, tokenizer=tokenizer, model=model, kind=kind,
+                  other=other)
+    scripts = SCRIPTS[kind]
 
     class Handler(BaseHTTPRequestHandler):
         """Serves the page and the authoring JSON routes."""
@@ -326,8 +374,11 @@ def make_server(scenes, port, tokenizer=None, model=DEFAULT_MODEL):
             path = unquote(urlparse(self.path).path)
             try:
                 if method == "GET" and self._is_page(path):
-                    page = assemble_page(HTML, PAGE_STYLE, PAGE_SCRIPTS)
+                    page = assemble_page(HTML, PAGE_STYLE, scripts)
                     self._send(200, "text/html; charset=utf-8", page)
+                    return
+                if method == "GET" and path == "/api/info":
+                    self._json(200, {"kind": kind, "file": str(store.path)})
                     return
                 if method == "GET" and path == "/api/scenes":
                     self._json(200, store.list_scenes())
@@ -336,7 +387,8 @@ def make_server(scenes, port, tokenizer=None, model=DEFAULT_MODEL):
                     scene = store.save(None, self._read_json())
                     self._json(200, {"ok": True, "scene": scene})
                     return
-                if method == "POST" and path == "/api/tokens":
+                if (method == "POST" and path == "/api/tokens"
+                        and kind == "scenes"):
                     payload = self._read_json()
                     report = store.token_report(
                         payload, payload.get("max_tokens", 512))
@@ -400,18 +452,26 @@ def make_server(scenes, port, tokenizer=None, model=DEFAULT_MODEL):
 def main():
     """Serves the authoring page until interrupted."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--scenes", default="authored/scenes.jsonl")
+    parser.add_argument("--kind", choices=sorted(SCRIPTS), default="scenes")
+    parser.add_argument(
+        "--scenes", help="file to edit (default depends on --kind)")
+    parser.add_argument(
+        "--other", help="sibling eval file; default swaps dev and test")
     parser.add_argument("--port", type=int, default=PORT)
     parser.add_argument("--model", default=DEFAULT_MODEL)
     args = parser.parse_args()
+    scenes = args.scenes or DEFAULT_FILES[args.kind]
+    other = args.other or (sibling(scenes) if args.kind == "eval" else None)
     missing = [
-        path.name for path in page_paths(HTML, PAGE_STYLE, PAGE_SCRIPTS)
+        path.name
+        for path in page_paths(HTML, PAGE_STYLE, SCRIPTS[args.kind])
         if not path.is_file()]
     if missing:
         raise SystemExit("Missing " + ", ".join(missing))
-    server = make_server(args.scenes, args.port, model=args.model)
-    print(f"Author UI at http://{HOST}:{server.server_address[1]}/",
-          flush=True)
+    server = make_server(scenes, args.port, model=args.model,
+                         kind=args.kind, other=other)
+    print(f"Author UI ({args.kind}: {scenes}) at "
+          f"http://{HOST}:{server.server_address[1]}/", flush=True)
     try:
         server.serve_forever()
     except KeyboardInterrupt:

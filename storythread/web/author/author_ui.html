@@ -11,6 +11,7 @@
 <body>
 <header class="top">
   <h1>Storythread Author</h1>
+  <span id="file" class="hint"></span>
   <button type="button" id="theme">Dark</button>
 </header>
 <main id="list-page" class="page">
@@ -48,10 +49,10 @@
     <span id="title" class="title"></span>
     <span id="state" class="hint"></span>
     <span class="grow"></span>
-    <label>Token cap
+    <label data-scenes-only>Token cap
       <input id="cap" type="number" min="1" step="1" value="512">
     </label>
-    <button type="button" id="check">Check token counts</button>
+    <button type="button" id="check" data-scenes-only>Check token counts</button>
     <button type="button" id="discard">Discard changes</button>
     <button type="button" id="save" class="primary">Save</button>
   </div>
