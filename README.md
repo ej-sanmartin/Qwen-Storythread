@@ -285,11 +285,15 @@ python -m storythread.author_ui
 ```
 
 Open http://127.0.0.1:8766/. The file defaults to `authored/scenes.jsonl`.
-`--port` changes 8766. The first page lists saved scenes. **Delete** on a
-row asks you to confirm in a dialog, then removes that scene. **New scene**
-opens an editor with a generated `scenario_id`. Click a chat bubble to edit it in
-the sidebar, and highlight words in a turn to use them as evidence. Checks run
-when you press Save.
+`--port` changes 8766.
+
+![Authoring one scene, with earlier evidence highlighted in the chat.](docs/author-ui.png)
+
+The first page lists saved scenes. **Delete** on a row asks you to confirm
+in a dialog, then removes that scene. **New scene** opens an editor with a
+generated `scenario_id`. Click a chat bubble to edit it in the sidebar, and
+highlight words in a turn to use them as evidence. Checks run when you press
+Save.
 
 ## 4. Export the two datasets
 
@@ -381,6 +385,8 @@ python -m storythread.inspect_adapters --recent runs/pilot-recent \
 Writes one standalone HTML file (open it in a browser; no server needed). It
 reads the saved LoRA files directly, so Qwen is not loaded. Needs `numpy`,
 which `transformers` installs.
+
+![Recent in blue and earlier in amber, both at step 100.](docs/adapter-heatmap.png)
 
 - Snapshots (`0000025_adapters.safetensors`, ...) are matched across the two
   runs by optimizer step; steps missing from either run are listed. The final
