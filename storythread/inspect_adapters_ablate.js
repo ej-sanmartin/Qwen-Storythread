@@ -96,11 +96,9 @@ function renderAblation() {
   if (!ready) props.disabled = "disabled";
   else props.onclick = () => exportPlan(arms[0]);
   const button = el("button", props, "Export ablation plan");
-  const lead = state.view === "diff"
-    ? "This chart compares arms. Toggle projections on the update-size "
-      + "or flat view."
-    : "Click a bar to toggle that projection. Click a block label to "
-      + "select or clear the whole block. Drag still rotates.";
+  const lead = "Both arms, side by side. Click a bar to toggle that "
+    + "projection. Click a block label to select or clear the whole block. "
+    + "The checkpoint step is the snapshot this plan will copy.";
   const groups = arms.map((arm) => ablationGroup(arm, arms.length !== 1));
   const empty = arms.length ? [] : [el("p", {class: "hint"},
     "No projections selected at this checkpoint.")];

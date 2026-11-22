@@ -133,16 +133,21 @@ function panel(arm) {
   return el("section", {class: "panel"}, title, ...absent, grid);
 }
 
+// Returns the chart layout. Ablation always uses the side-by-side arms.
+function chartView() {
+  return state.mode === "ablate" ? "size" : state.view;
+}
+
 // Fills the color legend for the current view.
 function renderLegend() {
   const [a, b] = REPORT.arms;
-  if (state.view === "diff") {
+  if (chartView() === "diff") {
     $("legend").replaceChildren(`${b} larger \u2212${DIFF_MAX}%`,
       el("span", {class: "ramp diverging"}),
       `${a} larger +${DIFF_MAX}% (of ${b}; same scale for all steps)`);
     return;
   }
-  if (state.view === "size") {
+  if (chartView() === "size") {
     const ramps = REPORT.arms.flatMap((arm) => [
       `${arm} `,
       el("span", {class: arm === "earlier" ? "ramp earlier" : "ramp"}),
@@ -159,9 +164,10 @@ function renderLegend() {
 // Redraws the panels, legend, and detail section for the current view.
 function render() {
   scenes.length = 0;
-  const panels = state.view === "flat" ? REPORT.arms.map(panel)
-    : state.view === "size" ? REPORT.arms.map(sizePanel) : [diffPanel()];
-  $("panels").className = state.view === "diff" ? "one" : "two";
+  const view = chartView();
+  const panels = view === "flat" ? REPORT.arms.map(panel)
+    : view === "size" ? REPORT.arms.map(sizePanel) : [diffPanel()];
+  $("panels").className = view === "diff" ? "one" : "two";
   $("panels").replaceChildren(...panels);
   renderLegend();
   drawScenes();
@@ -196,6 +202,9 @@ function boot() {
   });
   $("mode").addEventListener("change", (e) => {
     state.mode = e.target.value;
+    const view = $("view");
+    view.disabled = state.mode === "ablate";
+    view.value = state.mode === "ablate" ? "size" : state.view;
     render();
   });
   $("reset").addEventListener("click", () => {
