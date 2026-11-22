@@ -408,11 +408,13 @@ which `transformers` installs.
   button switches themes; the page follows the system setting until you
   press it, then remembers your choice in the browser. Dark mode inverts
   the ramp (dim to bright), so a bigger update still stands out.
-- For a recognized Qwen3.5 checkpoint, click a projection label or a group
-  title on the chart (or a column header in the flat grid) to open the
-  glossary, scroll to that row, and flash it. A group title flashes all of
-  its rows. Block labels are not links: the glossary describes projections,
-  not blocks.
+- For a recognized Qwen3.5 checkpoint, the glossary has two tables:
+  **Projections** (what each weight matrix does) and **Transformer layers
+  (blocks)** (one row per adapted block: its layer type, what that type
+  does, and the projections adapted in it, all read from the checkpoint's
+  tensor paths). Click a projection label, a group title, or a block label
+  on the chart (or a header in the flat grid) to open the glossary, scroll
+  to that row, and flash it. A group title flashes all of its rows.
 - Height and color show the size of the learned correction only. A taller
   `in_proj_a` bar alone cannot tell us whether the model retains more
   context or remembers a story event better. Note that `in_proj_a` and

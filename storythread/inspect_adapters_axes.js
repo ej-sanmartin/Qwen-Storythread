@@ -133,8 +133,9 @@ function drawProjectionLabels(ctx, at, room, scene) {
 }
 
 // Draws block labels beyond the outer side edge of the floor, each with a
-// short tick, on whichever side edge is currently at screen left.
-function drawBlockLabels(ctx, at) {
+// short tick, on whichever side edge is currently at screen left. Blocks
+// link to their row in the glossary's transformer-layer table.
+function drawBlockLabels(ctx, at, scene) {
   const mid = NZ * ZSTEP / 2;
   const edge = rotate(0, 0, mid).x < rotate(NX, 0, mid).x ? 0 : NX;
   const outward = edge === 0 ? -1 : 1;
@@ -151,8 +152,13 @@ function drawBlockLabels(ctx, at) {
     ctx.stroke();
     ctx.fillStyle = theme().label;
     ctx.textAlign = x1 < x0 ? "right" : "left";
-    haloText(ctx, b === null ? "other" : `block ${b}`,
-             x1 + (x1 < x0 ? -4 : 4), y1 + 4);
+    const text = b === null ? "other" : `block ${b}`;
+    haloText(ctx, text, x1 + (x1 < x0 ? -4 : 4), y1 + 4);
+    if (ARCHITECTURE_KNOWN && b !== null) {
+      const w = ctx.measureText(text).width;
+      addLink(scene, [x1 < x0 ? x1 - 4 - w : x1 + 4, y1 - 8, w, 16],
+              [`block:${b}`], `${text}: click to read what a block is`);
+    }
   });
 }
 
@@ -161,5 +167,5 @@ function drawBlockLabels(ctx, at) {
 function drawLabels(ctx, at, room, scene) {
   scene.links = [];
   drawProjectionLabels(ctx, at, room, scene);
-  drawBlockLabels(ctx, at);
+  drawBlockLabels(ctx, at, scene);
 }

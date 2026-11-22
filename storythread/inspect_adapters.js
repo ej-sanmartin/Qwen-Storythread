@@ -86,6 +86,16 @@ function columnHeader(column) {
     onclick: () => goToGlossary([column.id])}, column.label);
 }
 
+// Returns a flat-grid row header; a button to the block's glossary row when
+// the architecture is known.
+function rowHeader(block) {
+  if (block === null) return el("span", {class: "row"}, "other");
+  if (!ARCHITECTURE_KNOWN) return el("span", {class: "row"}, `${block}`);
+  return el("button", {class: "row", type: "button",
+    title: `block ${block}: jump to its description`,
+    onclick: () => goToGlossary([`block:${block}`])}, `${block}`);
+}
+
 // Returns one arm's heatmap panel for the selected step.
 function panel(arm) {
   const present = String(state.step) in REPORT.rms[arm];
@@ -93,7 +103,7 @@ function panel(arm) {
     el("span"),
     ...REPORT.columns.map(columnHeader));
   for (const block of REPORT.blocks) {
-    grid.append(el("span", {class: "row"}, block === null ? "other" : `${block}`));
+    grid.append(rowHeader(block));
     for (const column of REPORT.columns) grid.append(cell(arm, block, column));
   }
   const title = el("h2", {}, arm, " ",

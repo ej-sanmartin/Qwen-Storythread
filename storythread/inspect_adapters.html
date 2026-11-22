@@ -78,7 +78,18 @@
       Qwen3.5-4B, which mixes Gated DeltaNet layers with full-attention
       layers. They are shown only because this checkpoint was recognized as
       Qwen3.5.</p>
+    <h3>Projections</h3>
+    <p class="note">The weight matrices on the chart's left-to-right axis.</p>
     <table id="glossary-table"></table>
+    <h3>Transformer layers (blocks)</h3>
+    <p class="note">A block is one transformer layer, numbered from 0; the
+      model has 32 and each feeds the next. MLX-LM adds LoRA only to the last
+      <code>num_layers</code> blocks, so this lists just the blocks on the
+      chart's front-to-back axis. Every other block keeps the base model's
+      weights. In Qwen3.5-4B every fourth block is full attention and the
+      rest are Gated DeltaNet. The layer type is read from the projection
+      names found in each block.</p>
+    <table id="blocks-table"></table>
     </div>
   </details>
 </main>

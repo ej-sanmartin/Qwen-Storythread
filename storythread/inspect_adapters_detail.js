@@ -117,12 +117,30 @@ function renderGlossary() {
       el("td", {}, GROUPS[prefix]), el("td", {}, el("code", {}, label)),
       el("td", {}, text)));
   $("glossary-table").replaceChildren(head, ...rows);
+  renderBlocks();
 }
 
-// Opens the glossary, scrolls to the rows for the given column ids, and
-// briefly highlights them. Ids with no glossary row are ignored.
+// Fills the transformer-layer table with one row per adapted block. Layer
+// type and projections come from the checkpoint's own tensor paths.
+function renderBlocks() {
+  const head = el("tr", {}, ...["Block", "Layer type", "What it does",
+    "Adapted projections"].map((name) => el("th", {scope: "col"}, name)));
+  const rows = REPORT.blocks.filter((b) => b !== null).map((block) => {
+    const columns = REPORT.columns.filter((c) => PATHS.has(`${block}|${c.id}`));
+    const kind = layerKind(columns.map((c) => c.id));
+    const names = columns.flatMap((c, i) =>
+      [...(i ? [", "] : []), el("code", {}, c.label)]);
+    return el("tr", {"data-column": `block:${block}`, tabindex: "-1"},
+      el("td", {}, `block ${block}`), el("td", {}, kind ? kind.group : "\u2014"),
+      el("td", {}, kind ? kind.text : "\u2014"), el("td", {}, ...names));
+  });
+  $("blocks-table").replaceChildren(head, ...rows);
+}
+
+// Opens the glossary, scrolls to the rows (projections or blocks) for the
+// given ids, and briefly highlights them. Unknown ids are ignored.
 function goToGlossary(ids) {
-  const rows = [...$("glossary-table").querySelectorAll("tr[data-column]")]
+  const rows = [...$("glossary").querySelectorAll("tr[data-column]")]
     .filter((row) => ids.includes(row.dataset.column));
   if (!rows.length) return;
   $("glossary").open = true;

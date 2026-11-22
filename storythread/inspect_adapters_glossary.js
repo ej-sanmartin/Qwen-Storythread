@@ -25,6 +25,25 @@ const GLOSSARY = [
 const GLOSSARY_BY_ID = new Map(GLOSSARY.map(([prefix, label, text]) =>
   [`${prefix}.${label}`, {group: GROUPS[prefix], label, text}]));
 
+// What each layer type does, keyed by group title. Feed-forward is in every
+// block, so it does not distinguish layer types.
+const LAYER_TEXT = {
+  "Gated DeltaNet": "Recurrent layer: keeps a running state and updates it token by token, carrying context forward cheaply.",
+  "Full attention": "Each token looks back at every earlier token directly, which retrieves exact details at a higher cost.",
+};
+
+// Returns {group, text} for the layer type implied by a block's adapted
+// column ids, or null when the architecture or type is not known.
+function layerKind(columnIds) {
+  for (const id of columnIds) {
+    const about = describe(id);
+    if (about && LAYER_TEXT[about.group]) {
+      return {group: about.group, text: LAYER_TEXT[about.group]};
+    }
+  }
+  return null;
+}
+
 // Returns the column ids of every glossary row in a group title such as
 // "Feed-forward".
 function groupColumnIds(group) {
