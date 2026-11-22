@@ -5,6 +5,7 @@
   --muted: #52525b; --warn: #92400e; --strong: #18181b; --path: #374151;
   --recent: #4a7fc0; --earlier: #c98a2b;
   --ramp-from: hsl(212 40% 90%); --ramp-to: hsl(212 50% 40%);
+  --earlier-from: hsl(26 55% 90%); --earlier-to: hsl(26 55% 40%);
   --diverge-neg: hsl(26 55% 40%); --diverge-mid: hsl(0 0% 90%);
   --diverge-pos: hsl(212 50% 40%);
   --flash: #fde68a;
@@ -23,6 +24,7 @@
   --bg: #0d1117; --fg: #e6edf3; --panel: #151b23; --line: #2d3640;
   --muted: #9aa7b4; --warn: #e3b341; --strong: #e6edf3; --path: #c3ccd5;
   --ramp-from: hsl(212 40% 32%); --ramp-to: hsl(212 50% 66%);
+  --earlier-from: hsl(26 55% 32%); --earlier-to: hsl(26 55% 66%);
   --diverge-neg: hsl(26 55% 66%); --diverge-mid: hsl(0 0% 28%);
   --diverge-pos: hsl(212 50% 66%);
   --flash: rgba(227,179,65,.35);
@@ -44,10 +46,15 @@ code { font-size: .85em; }
 #howto { max-width: 60rem; margin: 0 0 1rem; font-size: .9rem; }
 #howto summary { cursor: pointer; font-weight: 600; }
 #howto li { margin: .25rem 0; color: var(--muted); }
-#legend { display: flex; align-items: center; gap: .4rem; font-size: .85rem; }
+#legend { display: flex; flex-wrap: wrap; align-items: center;
+  gap: .4rem; font-size: .85rem; }
+#legend .scale { white-space: nowrap; }
 #legend .ramp {
   width: 8rem; height: .7rem; border: 1px solid var(--line);
   background: linear-gradient(to right, var(--ramp-from), var(--ramp-to));
+}
+#legend .ramp.earlier {
+  background: linear-gradient(to right, var(--earlier-from), var(--earlier-to));
 }
 #legend .ramp.diverging {
   background: linear-gradient(to right, var(--diverge-neg),

@@ -197,13 +197,13 @@ function sizePanel(arm) {
     const v = valueAt(arm, state.step, path);
     if (v === undefined) return null;
     const t = Math.min(1, v / (REPORT.max || 1));
-    return {h: t * HEIGHT, ...ramp(t),
+    return {h: t * HEIGHT, ...armTone(arm, t),
             label: `${arm} \u00b7 ${where(info)} \u00b7 RMS ${v.toPrecision(3)}`};
   });
   const note = String(state.step) in REPORT.rms[arm]
     ? "" : `No snapshot for ${arm} at step ${state.step}.`;
   return scenePanel(`${arm} \u00b7 step ${state.step}`, bars,
-    "Height and color: effective LoRA update RMS.", 0, false, note);
+    "Taller and deeper: larger effective LoRA update RMS.", 0, false, note);
 }
 
 // Returns the 3D panel of the first arm minus the second, in percent.
@@ -213,7 +213,7 @@ function diffPanel() {
     const pct = diffPercent(path, state.step);
     if (pct === undefined) return null;
     const t = Math.min(1, Math.abs(pct) / DIFF_MAX);
-    const color = pct >= 0 ? tone(212, 45, t) : tone(26, 55, t);
+    const color = pct >= 0 ? armTone(a, t) : armTone(b, t);
     return {h: Math.sign(pct) * t * HEIGHT, ...color,
             label: `${where(info)} \u00b7 ${a} is ${signed(pct)} vs ${b}`};
   });

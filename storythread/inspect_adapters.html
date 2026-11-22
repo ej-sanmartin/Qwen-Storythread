@@ -26,9 +26,11 @@
         names used in the checkpoint keys. See <b>What do these labels
         mean?</b> below the chart.</li>
       <li><b>Front to back</b> is the block index (adapted blocks only).</li>
-      <li><b>Height and color</b> are the effective LoRA update RMS: the
+      <li><b>Height and shade</b> are the effective LoRA update RMS: the
         typical size of the change LoRA adds to each weight in that matrix.
-        Taller means the adapter moved that matrix more.</li>
+        Taller and deeper means the adapter moved that matrix more. In the
+        both-arms view, recent stays blue and earlier stays amber, the same
+        hues as the recent-vs-earlier view.</li>
       <li><b>Recent vs earlier</b> view: a bar above the floor means the
         recent arm's update is larger, below the floor means the earlier
         arm's is larger. Height is the gap as a percent of the earlier arm.

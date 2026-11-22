@@ -243,6 +243,7 @@ class CheckpointTest(unittest.TestCase):
         for placeholder in ("{{style}}", "{{script}}", "{{data}}"):
             self.assertNotIn(placeholder, page)
         self.assertIn("function drawScene(", page)
+        self.assertIn("function armTone(", page)
         self.assertIn("function goToGlossary(", page)
         self.assertIn("Transformer layers (blocks)", page)
         self.assertIn('data-theme="dark"', page)

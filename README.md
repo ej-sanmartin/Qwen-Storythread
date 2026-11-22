@@ -392,9 +392,11 @@ which `transformers` installs.
   question for ablation.
 - The **View** menu has three layouts, all with projections left to right and
   blocks front to back, and one color scale across both arms and every step:
-  rotatable 3D bars of update size for each arm (drag to rotate), 3D bars of
-  the gap between the arms (above the floor: recent larger; below: earlier
-  larger; height is a percent of earlier), and a flat grid with the numbers.
+  rotatable 3D bars of update size for each arm (drag to rotate; recent stays
+  blue and earlier stays amber, the same hues as the gap view, while shade
+  shows size on one shared scale), 3D bars of the gap between the arms
+  (above the floor: recent larger; below: earlier larger; height is a
+  percent of earlier), and a flat grid with the numbers.
   The 3D camera is orthographic and drags within a limited left-right range
   so the block labels stay on the outer edge. Blank spots have no adapter
   tensor. Click a bar or cell for a compact card below the chart: the exact

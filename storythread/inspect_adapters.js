@@ -47,7 +47,17 @@ function tone(hue, sat, t) {
   return {hue, sat, light: isDark() ? 32 + 34 * t : 90 - 50 * t};
 }
 
-// Returns the blue color for t in 0..1 on the one shared scale.
+// Hue and saturation for each arm, shared by the update-size view and the
+// recent-vs-earlier view: recent is blue, earlier is amber.
+const ARM_TONE = {recent: [212, 45], earlier: [26, 55]};
+
+// Returns an arm's color at magnitude t in 0..1. Unknown arms use blue.
+function armTone(arm, t) {
+  const [hue, sat] = ARM_TONE[arm] || [212, 45];
+  return tone(hue, sat, t);
+}
+
+// Returns the blue color for t in 0..1 on the flat grid's shared scale.
 function ramp(t) {
   return tone(212, 40 + 10 * t, t);
 }
@@ -120,6 +130,16 @@ function renderLegend() {
     $("legend").replaceChildren(`${b} larger \u2212${DIFF_MAX}%`,
       el("span", {class: "ramp diverging"}),
       `${a} larger +${DIFF_MAX}% (of ${b}; same scale for all steps)`);
+    return;
+  }
+  if (state.view === "size") {
+    const ramps = REPORT.arms.flatMap((arm) => [
+      `${arm} `,
+      el("span", {class: arm === "earlier" ? "ramp earlier" : "ramp"}),
+      " ",
+    ]);
+    $("legend").replaceChildren(...ramps, el("span", {class: "scale"},
+      `0 to ${fmt(REPORT.max)}, same scale for all steps`));
     return;
   }
   $("legend").replaceChildren("0", el("span", {class: "ramp"}),
