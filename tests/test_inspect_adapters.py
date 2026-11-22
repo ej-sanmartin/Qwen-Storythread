@@ -206,6 +206,31 @@ class CheckpointTest(unittest.TestCase):
                          ["down_proj", "up_proj"])
         self.assertEqual(len(report["modules"]), 4)
 
+    def test_architecture_needs_the_full_fingerprint(self):
+        names = set(ia.QWEN35_FINGERPRINT)
+        self.assertEqual(ia.detect_architecture(names | {"mlp.up_proj"}),
+                         "qwen3_5")
+        self.assertIsNone(ia.detect_architecture(
+            {"mlp.up_proj", "self_attn.q_proj"}))
+        self.assertIsNone(ia.detect_architecture(
+            names - {"linear_attn.in_proj_z"}))
+
+    def test_report_architecture_follows_tensor_paths(self):
+        plain = make_run(self.tmp / "plain", [25], seed=1)
+        report = ia.build_report({"recent": plain, "earlier": plain})
+        self.assertIsNone(report["architecture"])
+        qwen = make_run(self.tmp / "qwen", [25], seed=1)
+        rng = np.random.default_rng(3)
+        tensors = {}
+        for name in ia.QWEN35_FINGERPRINT:
+            module = f"language_model.model.layers.3.{name}"
+            tensors[f"{module}.lora_a"] = rng.normal(size=(5, 2))
+            tensors[f"{module}.lora_b"] = rng.normal(size=(2, 4))
+        write_safetensors(qwen / "0000025_adapters.safetensors", tensors)
+        report = ia.build_report({"recent": qwen, "earlier": qwen})
+        self.assertEqual(report["architecture"], "qwen3_5")
+        self.assertEqual(len(report["modules"]), 4)
+
     def test_cli_writes_standalone_page(self):
         recent = make_run(self.tmp / "recent", [25, 50], seed=1)
         earlier = make_run(self.tmp / "earlier", [25, 50], seed=2)

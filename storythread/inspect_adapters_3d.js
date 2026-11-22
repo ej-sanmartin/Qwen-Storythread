@@ -1,12 +1,16 @@
 // 3D bar-chart views for the adapter report. Shares globals with
-// inspect_adapters.js (REPORT, state, valueAt, ramp, signed, el, render).
-const HEIGHT = 2.4;     // world height of a full-scale bar
-const ZSTEP = 1.9;      // world depth of one block row
+// inspect_adapters.js (REPORT, state, valueAt, ramp, signed, el, render)
+// and inspect_adapters_axes.js (floor and labels).
+const HEIGHT = 2;       // world height of a full-scale bar
+const ZSTEP = 1.8;      // world depth of one block row
 const GAP = 0.14;       // empty margin inside each grid cell
 const MIN_H = 0.03;     // keeps zero-height bars visible
 const HINT = "Drag to rotate. Click a bar for details.";
-const HOME = {yaw: 0.35, pitch: 0.6};
+// Orthographic camera: no perspective, so equal bars stay equal size.
+// A higher pitch looks down more, which exposes the back rows.
+const HOME = {yaw: 0.5, pitch: 0.9};
 const camera = {...HOME};
+const YAW_LIMIT = 1.2;  // keeps the side labels on the outside
 const scenes = [];      // {canvas, bars, caption, low, hits, ctx, dpr}
 const NX = REPORT.columns.length;
 const NZ = REPORT.blocks.length;
@@ -15,11 +19,11 @@ const COLUMN_LABEL = new Map(REPORT.columns.map((c) => [c.id, c.label]));
 // Outward normal, corner picks (0 = min, 1 = max per axis), lightness shift.
 const FACES = [
   {n: [0, 1, 0], c: [[0, 1, 0], [1, 1, 0], [1, 1, 1], [0, 1, 1]], dl: 0},
-  {n: [0, -1, 0], c: [[0, 0, 0], [1, 0, 0], [1, 0, 1], [0, 0, 1]], dl: -8},
-  {n: [1, 0, 0], c: [[1, 0, 0], [1, 0, 1], [1, 1, 1], [1, 1, 0]], dl: -12},
-  {n: [-1, 0, 0], c: [[0, 0, 0], [0, 0, 1], [0, 1, 1], [0, 1, 0]], dl: -12},
-  {n: [0, 0, 1], c: [[0, 0, 1], [1, 0, 1], [1, 1, 1], [0, 1, 1]], dl: -22},
-  {n: [0, 0, -1], c: [[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]], dl: -22},
+  {n: [0, -1, 0], c: [[0, 0, 0], [1, 0, 0], [1, 0, 1], [0, 0, 1]], dl: -6},
+  {n: [1, 0, 0], c: [[1, 0, 0], [1, 0, 1], [1, 1, 1], [1, 1, 0]], dl: -9},
+  {n: [-1, 0, 0], c: [[0, 0, 0], [0, 0, 1], [0, 1, 1], [0, 1, 0]], dl: -9},
+  {n: [0, 0, 1], c: [[0, 0, 1], [1, 0, 1], [1, 1, 1], [0, 1, 1]], dl: -15},
+  {n: [0, 0, -1], c: [[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]], dl: -15},
 ];
 
 // Returns recent vs earlier as a percent of earlier, or undefined.
@@ -45,9 +49,10 @@ function rotate(px, py, pz) {
   return {x: dx * cy - dz * sy, y: py * cp + z1 * sp, d: z1 * cp - py * sp};
 }
 
-// Returns a function mapping world points to canvas pixels so the whole
-// floor, from height low to HEIGHT, fits a w by h canvas.
-function fitter(w, h, low) {
+// Returns a function mapping world points to canvas pixels so the floor,
+// from height low to HEIGHT, fills a w by h canvas. bottom is the pixel room
+// kept for labels under the floor.
+function fitter(w, h, low, bottom) {
   const pts = [];
   for (const x of [0, NX]) for (const z of [0, NZ * ZSTEP]) {
     for (const y of [low, HEIGHT]) pts.push(rotate(x, y, z));
@@ -55,7 +60,7 @@ function fitter(w, h, low) {
   const xs = pts.map((p) => p.x), ys = pts.map((p) => p.y);
   const [x0, x1] = [Math.min(...xs), Math.max(...xs)];
   const [y0, y1] = [Math.min(...ys), Math.max(...ys)];
-  const pad = {left: 80, right: 24, top: 34, bottom: 84};  // label room
+  const pad = {left: 70, right: 12, top: 26, bottom};
   const k = Math.min((w - pad.left - pad.right) / (x1 - x0),
                      (h - pad.top - pad.bottom) / (y1 - y0));
   const ox = pad.left + (w - pad.left - pad.right) / 2 - k * (x0 + x1) / 2;
@@ -64,64 +69,6 @@ function fitter(w, h, low) {
     const p = rotate(x, y, z);
     return [ox + k * p.x, oy - k * p.y];
   };
-}
-
-// Draws the floor and its cell lines.
-function drawFloor(ctx, at) {
-  const depth = NZ * ZSTEP;
-  const corners = [[0, 0], [NX, 0], [NX, depth], [0, depth]].map(
-    ([x, z]) => at(x, 0, z));
-  ctx.beginPath();
-  corners.forEach(([x, y], k) => (k ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
-  ctx.closePath();
-  ctx.fillStyle = "#f4f4f5";
-  ctx.fill();
-  ctx.strokeStyle = "#e4e4e7";
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  for (let i = 0; i <= NX; i++) {
-    ctx.moveTo(...at(i, 0, 0));
-    ctx.lineTo(...at(i, 0, depth));
-  }
-  for (let j = 0; j <= NZ; j++) {
-    ctx.moveTo(...at(0, 0, j * ZSTEP));
-    ctx.lineTo(...at(NX, 0, j * ZSTEP));
-  }
-  ctx.stroke();
-}
-
-// Draws text with a white halo so bars behind it do not hide it.
-function haloText(ctx, text, x, y) {
-  ctx.lineWidth = 3;
-  ctx.strokeStyle = "rgba(255,255,255,.9)";
-  ctx.strokeText(text, x, y);
-  ctx.fillText(text, x, y);
-}
-
-// Draws projection names on the near edge and block numbers on the left.
-function drawLabels(ctx, at) {
-  const depth = NZ * ZSTEP;
-  const nearZ = rotate(NX / 2, 0, 0).d < rotate(NX / 2, 0, depth).d ? 0 : depth;
-  const labelZ = nearZ === 0 ? -0.4 : depth + 0.4;
-  ctx.fillStyle = "#3f3f46";
-  ctx.font = "11px system-ui";
-  ctx.textAlign = "right";
-  REPORT.columns.forEach((c, i) => {
-    const [x, y] = at(i + 0.5, 0, labelZ);
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(-Math.PI / 4);
-    haloText(ctx, c.label, 0, 0);
-    ctx.restore();
-  });
-  const mid = depth / 2;
-  const leftX = rotate(0, 0, mid).x < rotate(NX, 0, mid).x ? 0 : NX;
-  const labelX = leftX === 0 ? -0.4 : NX + 0.4;
-  ctx.textAlign = leftX === 0 ? "right" : "left";
-  REPORT.blocks.forEach((b, j) => {
-    const [x, y] = at(labelX, 0, (j + 0.5) * ZSTEP);
-    haloText(ctx, b === null ? "other" : `block ${b}`, x, y + 4);
-  });
 }
 
 // Draws one bar's visible faces and records them for hit testing.
@@ -142,10 +89,22 @@ function drawBar(ctx, at, bar, scene) {
     path.closePath();
     ctx.fillStyle = `hsl(${bar.hue} ${bar.sat}% ${bar.light + face.dl}%)`;
     ctx.fill(path);
-    ctx.strokeStyle = "rgba(0,0,0,.3)";
+    ctx.strokeStyle = "rgba(15,23,42,.16)";
     ctx.lineWidth = 0.6;
     ctx.stroke(path);
     scene.hits.push({path, bar});
+  }
+}
+
+// Outlines the selected bar's faces on top; the fill is left untouched so
+// color and height still show the update size.
+function outlineSelected(ctx, scene) {
+  const faces = scene.hits.filter((hit) => hit.bar.selected);
+  ctx.lineJoin = "round";
+  for (const [color, width] of [["#fff", 5], ["#1f2937", 2]]) {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    for (const hit of faces) ctx.stroke(hit.path);
   }
 }
 
@@ -159,7 +118,8 @@ function drawScene(scene) {
   canvas.height = Math.round(h * dpr);
   const ctx = canvas.getContext("2d");
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  const at = fitter(w, h, scene.low);
+  const room = labelRoom(ctx);
+  const at = fitter(w, h, scene.low, bottomRoom(ctx));
   drawFloor(ctx, at);
   scene.hits = [];
   scene.ctx = ctx;
@@ -168,14 +128,12 @@ function drawScene(scene) {
   for (const bar of [...bars].sort((p, q) => far(q) - far(p))) {
     drawBar(ctx, at, bar, scene);
   }
-  ctx.strokeStyle = "#18181b";
-  ctx.lineWidth = 2.5;
-  for (const hit of scene.hits) if (hit.bar.selected) ctx.stroke(hit.path);
-  drawLabels(ctx, at);
-  ctx.fillStyle = "#52525b";
+  outlineSelected(ctx, scene);
+  drawLabels(ctx, at, room);
+  ctx.fillStyle = "#6b7280";
   ctx.font = "12px system-ui";
   ctx.textAlign = "left";
-  ctx.fillText(scene.caption, 12, 20);
+  ctx.fillText(scene.caption, 10, 16);
 }
 
 // Redraws every scene on screen.
@@ -216,9 +174,10 @@ function attach(scene, readout) {
       drag.moved = true;
     }
     if (!drag.moved) return;
-    camera.yaw += (e.clientX - drag.last[0]) * 0.01;
+    camera.yaw = clamp(camera.yaw + (e.clientX - drag.last[0]) * 0.01,
+                       -YAW_LIMIT, YAW_LIMIT);
     camera.pitch = clamp(camera.pitch + (e.clientY - drag.last[1]) * 0.006,
-                         0.15, 1.45);
+                         0.35, 1.4);
     drag.last = [e.clientX, e.clientY];
     drawScenes();
   });
@@ -275,8 +234,7 @@ function sizePanel(arm) {
   const note = String(state.step) in REPORT.rms[arm]
     ? "" : `No snapshot for ${arm} at step ${state.step}.`;
   return scenePanel(`${arm} \u00b7 step ${state.step}`, bars,
-    "Left-right: projection. Front-back: block. Height and color: update RMS.",
-    0, false, note);
+    "Height and color: effective LoRA update RMS.", 0, false, note);
 }
 
 // Returns the 3D panel of the first arm minus the second, in percent.
@@ -286,8 +244,9 @@ function diffPanel() {
     const pct = diffPercent(path, state.step);
     if (pct === undefined) return null;
     const t = Math.min(1, Math.abs(pct) / DIFF_MAX);
-    return {h: Math.sign(pct) * t * HEIGHT, hue: pct >= 0 ? 215 : 28,
-            sat: 80, light: 92 - 52 * t,
+    const color = pct >= 0 ? {hue: 212, sat: 45, light: 90 - 48 * t}
+                           : {hue: 26, sat: 55, light: 90 - 46 * t};
+    return {h: Math.sign(pct) * t * HEIGHT, ...color,
             label: `${where(info)} \u00b7 ${a} is ${signed(pct)} vs ${b}`};
   });
   const note = bars.length ? "" :

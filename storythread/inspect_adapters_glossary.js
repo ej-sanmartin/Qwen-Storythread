@@ -1,6 +1,7 @@
 // Projection glossary for the adapter report. The groups, names, and
 // descriptions are specific to Qwen3.5-4B (Gated DeltaNet layers mixed with
-// full-attention layers). Other models still plot but show no description.
+// full-attention layers) and are used only when the architecture is known.
+// Other checkpoints plot with exact names and values but no descriptions.
 const GROUPS = {
   linear_attn: "Gated DeltaNet",
   mlp: "Feed-forward",
@@ -24,12 +25,12 @@ const GLOSSARY = [
 const GLOSSARY_BY_ID = new Map(GLOSSARY.map(([prefix, label, text]) =>
   [`${prefix}.${label}`, {group: GROUPS[prefix], label, text}]));
 
+// True when the report detected a Qwen3.5 checkpoint from its tensor paths.
+const ARCHITECTURE_KNOWN = REPORT.architecture === "qwen3_5";
+
 // Returns {group, label, text} for a column id such as
-// "linear_attn.in_proj_a"; unknown projections get a placeholder.
+// "linear_attn.in_proj_a", or null when the architecture is unknown or the
+// projection is not in the glossary.
 function describe(columnId) {
-  return GLOSSARY_BY_ID.get(columnId) || {
-    group: "Unrecognized",
-    label: columnId.split(".").pop(),
-    text: "No description: this glossary covers Qwen3.5-4B projections only.",
-  };
+  return ARCHITECTURE_KNOWN ? GLOSSARY_BY_ID.get(columnId) || null : null;
 }

@@ -54,8 +54,14 @@
 </header>
 <main>
   <div id="panels"></div>
+  <section id="detail" aria-live="polite"></section>
   <details id="glossary">
     <summary>What do these labels mean?</summary>
+    <p class="note" id="glossary-unknown" hidden>Labels are the projection
+      names found in this checkpoint's tensor paths, and values are measured
+      from its tensors. This architecture is not in the glossary, so no
+      descriptions or groups are shown.</p>
+    <div id="glossary-known">
     <p class="note"><b>Qwen's projections are not LoRA's factors.</b>
       <code>in_proj_a</code> and <code>in_proj_b</code> are names of
       <b>Qwen's projections</b>, weight matrices in the base model. They are
@@ -69,11 +75,11 @@
       better; that takes evaluation or ablation.</p>
     <p class="note">The groups and descriptions below are written for
       Qwen3.5-4B, which mixes Gated DeltaNet layers with full-attention
-      layers. Other models still plot, but their projections show no
-      description.</p>
+      layers. They are shown only because this checkpoint was recognized as
+      Qwen3.5.</p>
     <table id="glossary-table"></table>
+    </div>
   </details>
-  <section id="detail" aria-live="polite"></section>
 </main>
 <script type="application/json" id="report">{{data}}</script>
 <script>

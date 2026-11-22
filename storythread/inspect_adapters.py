@@ -4,9 +4,11 @@ Reads MLX-LM adapter snapshots directly (Qwen is never loaded) and writes a
 standalone heatmap of the effective LoRA update RMS per block and projection.
 This measures update size only. Behavioral contribution needs ablation.
 
-The numbers work for any MLX-LM LoRA run, but the page's block types and
-projection descriptions (inspect_adapters_glossary.js) are written for
-Qwen3.5-4B. Other models plot without descriptions.
+The numbers work for any MLX-LM LoRA run and always come from the
+checkpoint's own tensor paths. The page's groups and projection
+descriptions (inspect_adapters_glossary.js) are written for Qwen3.5-4B and
+are applied only when detect_architecture recognizes it. Other
+checkpoints plot with exact names and values, and no descriptions.
 """
 import argparse
 import json
@@ -21,13 +23,16 @@ from .review_ui import assemble_page, page_paths
 
 HTML = Path(__file__).with_name("inspect_adapters.html")
 PAGE_STYLE = "inspect_adapters.css"
-PAGE_SCRIPTS = ("inspect_adapters.js", "inspect_adapters_3d.js",
-                "inspect_adapters_glossary.js")
+PAGE_SCRIPTS = ("inspect_adapters.js", "inspect_adapters_glossary.js",
+                "inspect_adapters_axes.js", "inspect_adapters_3d.js",
+                "inspect_adapters_detail.js")
 METRIC = "Effective LoRA update RMS"
 SNAPSHOT = re.compile(r"^(\d+)_adapters\.safetensors$")
 FINAL = "adapters.safetensors"
 FACTOR = re.compile(r"^(?P<module>.+)\.(?P<factor>lora_[ab])$")
 BLOCK = re.compile(r"(?:^|\.)layers\.(?P<block>\d+)\.(?P<rest>.+)$")
+QWEN35_FINGERPRINT = {f"linear_attn.in_proj_{name}"
+                      for name in ("a", "b", "qkv", "z")}
 
 
 def read_safetensors(path):
@@ -165,6 +170,19 @@ def find_checkpoints(folder):
     return dict(sorted(steps.items())), notes
 
 
+def detect_architecture(columns):
+    """Returns "qwen3_5" when the adapted projections fingerprint Qwen3.5.
+
+    columns: projection paths after the block index, such as
+    "linear_attn.in_proj_a". Qwen3.5's Gated DeltaNet layers have separate
+    in_proj_a, in_proj_b, in_proj_qkv, and in_proj_z, so all four must be
+    adapted. Anything else returns None, and the page then shows exact
+    names and measured values without descriptions.
+    """
+    found = set(columns)
+    return "qwen3_5" if QWEN35_FINGERPRINT <= found else None
+
+
 def column_labels(columns):
     """Maps each column id to its last path part, or the full id if shared."""
     short = {column: column.rsplit(".", 1)[-1] for column in columns}
@@ -206,6 +224,7 @@ def build_report(runs):
               for v in snap.values()]
     return {
         "metric": METRIC, "arms": list(runs), "scales": scales,
+        "architecture": detect_architecture(columns),
         "steps": steps, "notes": notes,
         "missing": {label: [s for s in steps if s not in found[label]]
                     for label in runs},

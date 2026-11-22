@@ -395,23 +395,30 @@ which `transformers` installs.
   rotatable 3D bars of update size for each arm (drag to rotate), 3D bars of
   the gap between the arms (above the floor: recent larger; below: earlier
   larger; height is a percent of earlier), and a flat grid with the numbers.
-  Blank spots have no adapter tensor. Click a bar or cell for its module
-  path, dimensions, rank, and RMS per arm, plus its RMS across the saved
-  steps. Clicking also shows the block type (Gated DeltaNet, feed-forward, or
-  full attention), the full module path, and a plain-language description of
-  the projection. Axis labels stay the exact projection names from the
-  checkpoint keys. The page has a collapsible "What do these labels mean?"
-  glossary below the chart and a "How to read this" box.
+  The 3D camera is orthographic and drags within a limited left-right range
+  so the block labels stay on the outer edge. Blank spots have no adapter
+  tensor. Click a bar or cell for a compact card below the chart: the exact
+  module path, a plain-language description, the checkpoint step, the RMS per
+  arm, the matrix size and rank, and its RMS across the saved steps. The
+  selected bar gets a neutral outline, so its fill still shows the size.
+  Axis labels stay the exact projection names from the checkpoint keys. The
+  page also has a collapsible "What do these labels mean?" glossary below the
+  chart and a "How to read this" box.
 - Height and color show the size of the learned correction only. A taller
   `in_proj_a` bar alone cannot tell us whether the model retains more
   context or remembers a story event better. Note that `in_proj_a` and
   `in_proj_b` are names of **Qwen's projections**, distinct from the **LoRA
   `A` and `B` factors** (`lora_a`, `lora_b`).
-- **Qwen3.5-4B specific:** the RMS calculation works for any MLX-LM LoRA run,
-  but the block types and projection descriptions in the page are written for
-  Qwen3.5-4B (Gated DeltaNet layers mixed with full attention). Another
-  model's projections still plot, labeled "Unrecognized" with no description.
-  To support one, edit `storythread/inspect_adapters_glossary.js`.
+- **Qwen3.5-4B specific:** the plot always comes from the checkpoint's own
+  tensor paths and works for any MLX-LM LoRA run. The groups (Gated DeltaNet,
+  Feed-forward, Full attention) and projection descriptions are written for
+  Qwen3.5 and are applied only when the checkpoint is recognized as it: all
+  four Gated DeltaNet input projections (`in_proj_a`, `in_proj_b`,
+  `in_proj_qkv`, `in_proj_z`) must be adapted. Otherwise the chart shows the
+  exact names and measured values with no groups or descriptions. A Qwen3.5
+  run that adapts only full-attention blocks is therefore not recognized. To
+  support another model, edit `storythread/inspect_adapters_glossary.js` and
+  `detect_architecture` in `storythread/inspect_adapters.py`.
 
 ## 8. Evaluate
 
