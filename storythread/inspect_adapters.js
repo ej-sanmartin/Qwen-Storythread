@@ -7,7 +7,8 @@ const PATHS = new Map();  // "block|column" -> module path
 for (const [path, info] of Object.entries(REPORT.modules)) {
   PATHS.set(`${info.block}|${info.column}`, path);
 }
-const state = {step: REPORT.steps[REPORT.steps.length - 1], module: null};
+const state = {step: REPORT.steps[REPORT.steps.length - 1], module: null,
+               view: "size"};  // view: size | diff | flat
 const $ = (id) => document.getElementById(id);
 
 // Builds an element: make(namespace, tag, {attr: value}, ...children).
@@ -35,10 +36,21 @@ function fmt(value) {
   return value === 0 ? "0" : value.toPrecision(2);
 }
 
+// Formats a percent with an explicit sign.
+function signed(pct) {
+  return `${pct >= 0 ? "+" : "\u2212"}${Math.abs(pct).toFixed(1)}%`;
+}
+
+// Returns the {hue, sat, light} color for t in 0..1 on the shared scale.
+function ramp(t) {
+  return {hue: 215, sat: 80, light: 92 - 58 * t};
+}
+
 // Returns the cell colors for a value on the one shared color scale.
 function shade(value) {
   const t = Math.min(1, value / (REPORT.max || 1));
-  return `background:hsl(215 80% ${96 - 62 * t}%);` +
+  const c = ramp(t);
+  return `background:hsl(${c.hue} ${c.sat}% ${c.light}%);` +
          `color:${t > 0.5 ? "#fff" : "#18181b"}`;
 }
 
@@ -139,17 +151,40 @@ function renderDetail() {
   const legend = el("p", {}, ...REPORT.arms.flatMap((arm) => [
     el("span", {class: "swatch",
       style: `background:${COLORS[arm] || "#18181b"}`}), `${arm}  `]));
+  const pct = diffPercent(path, state.step);
+  const [a, b] = REPORT.arms;
+  const gap = pct === undefined ? [] : [el("p", {},
+    `At step ${state.step}, ${a} is ${signed(pct)} vs ${b}.`)];
   box.replaceChildren(
     el("h2", {}, "Selected module"), el("code", {}, path),
     el("table", {}, el("tr", {}, el("th", {}, "Arm"),
       el("th", {}, "Input \u00d7 output"), el("th", {}, "Rank"),
-      el("th", {}, `RMS at step ${state.step}`)), ...rows),
+      el("th", {}, `RMS at step ${state.step}`)), ...rows), ...gap,
     el("h2", {}, "Across saved steps"), chart(path), legend, stepTable(path));
 }
 
-// Redraws the panels and the detail section.
+// Fills the color legend for the current view.
+function renderLegend() {
+  const [a, b] = REPORT.arms;
+  if (state.view === "diff") {
+    $("legend").replaceChildren(`${b} larger \u2212${DIFF_MAX}%`,
+      el("span", {class: "ramp diverging"}),
+      `${a} larger +${DIFF_MAX}% (of ${b}; same scale for all steps)`);
+    return;
+  }
+  $("legend").replaceChildren("0", el("span", {class: "ramp"}),
+    `${fmt(REPORT.max)} (same scale for both arms and all steps)`);
+}
+
+// Redraws the panels, legend, and detail section for the current view.
 function render() {
-  $("panels").replaceChildren(...REPORT.arms.map(panel));
+  scenes.length = 0;
+  const panels = state.view === "flat" ? REPORT.arms.map(panel)
+    : state.view === "size" ? REPORT.arms.map(sizePanel) : [diffPanel()];
+  $("panels").className = state.view === "diff" ? "one" : "two";
+  $("panels").replaceChildren(...panels);
+  renderLegend();
+  drawScenes();
   renderDetail();
 }
 
@@ -173,8 +208,16 @@ function boot() {
     }
   }
   $("notes").replaceChildren(...notes.map((n) => el("li", {}, n)));
-  $("legend").replaceChildren("0", el("span", {class: "ramp"}),
-    `${fmt(REPORT.max)} (same scale for both arms and all steps)`);
+  $("view").addEventListener("change", (e) => {
+    state.view = e.target.value;
+    render();
+  });
+  $("reset").addEventListener("click", () => {
+    Object.assign(camera, HOME);
+    drawScenes();
+  });
+  window.addEventListener("resize", drawScenes);
   render();
 }
-boot();
+// Runs after every script in the page has loaded.
+window.addEventListener("DOMContentLoaded", boot);

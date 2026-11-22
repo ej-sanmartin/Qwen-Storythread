@@ -217,6 +217,7 @@ class CheckpointTest(unittest.TestCase):
         self.assertIn("separate question for ablation", page)
         for placeholder in ("{{style}}", "{{script}}", "{{data}}"):
             self.assertNotIn(placeholder, page)
+        self.assertIn("function drawScene(", page)
         data = re.search(r'id="report">(.*?)</script>', page, re.S)[1]
         self.assertEqual(json.loads(data)["steps"], [25, 50])
 

@@ -390,10 +390,14 @@ which `transformers` installs.
   for each projection, computed from rank-by-rank Gram matrices. It measures
   update size only. How much an update changes behavior is a separate
   question for ablation.
-- Rows are blocks and columns are projections, with one color scale for both
-  arms and every step. Blank cells have no adapter tensor. Click a cell for
-  its module path, dimensions, rank, and RMS per arm, plus its RMS across the
-  saved steps.
+- The **View** menu has three layouts, all with projections left to right and
+  blocks front to back, and one color scale across both arms and every step:
+  rotatable 3D bars of update size for each arm (drag to rotate), 3D bars of
+  the gap between the arms (above the floor: recent larger; below: earlier
+  larger; height is a percent of earlier), and a flat grid with the numbers.
+  Blank spots have no adapter tensor. Click a bar or cell for its module
+  path, dimensions, rank, and RMS per arm, plus its RMS across the saved
+  steps. The "How to read this" box on the page explains the axes.
 
 ## 8. Evaluate
 

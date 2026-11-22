@@ -17,8 +17,38 @@
     It does not say how much the update changes behavior; that is a
     separate question for ablation.
   </p>
+  <details id="howto">
+    <summary>How to read this (axes, colors, caveats)</summary>
+    <ul>
+      <li><b>One bar (or cell)</b> is one LoRA-adapted weight matrix in one
+        transformer block.</li>
+      <li><b>Left to right</b> is which projection. <code>in_proj_*</code>
+        and <code>out_proj</code> belong to linear-attention layers,
+        <code>q/k/v/o_proj</code> to full-attention layers, and
+        <code>gate/up/down_proj</code> to the feed-forward MLP.</li>
+      <li><b>Front to back</b> is the block index (adapted blocks only).</li>
+      <li><b>Height and color</b> are the effective LoRA update RMS: the
+        typical size of the change LoRA adds to each weight in that matrix.
+        Taller means the adapter moved that matrix more.</li>
+      <li><b>Recent vs earlier</b> view: a bar above the floor means the
+        recent arm's update is larger, below the floor means the earlier
+        arm's is larger. Height is the gap as a percent of the earlier arm.
+        The step selector shows how the gap and the sizes change over
+        training.</li>
+      <li>A <b>blank</b> spot means that block has no adapter on that
+        projection (the model mixes attention types).</li>
+      <li>This is size, not behavior. A large update does not show that the
+        model's replies changed; only evaluation or ablation can.</li>
+    </ul>
+  </details>
   <div id="controls">
+    <label>View <select id="view">
+      <option value="size">3D: update size, both arms</option>
+      <option value="diff">3D: recent vs earlier</option>
+      <option value="flat">Flat grid with numbers</option>
+    </select></label>
     <label>Checkpoint step <select id="step"></select></label>
+    <button id="reset" type="button">Reset camera</button>
     <span id="legend"></span>
   </div>
   <ul id="notes"></ul>
