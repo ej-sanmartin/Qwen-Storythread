@@ -304,8 +304,9 @@ recent evidence, the other on earlier evidence. `earlier` must be farther from
 the reply than `recent`. `evidence` is a quote that must appear in the cited
 turn.
 
+The shipped scenes in `authored/` were written by Claude Sonnet 5.5.
 `authored/scenes.jsonl` is sized for a 16 GB Mac: every scene fits 512 tokens
-(see step 6). `authored/scenes-long.jsonl` keeps the original longer scenes
+(see step 6). `authored/scenes-long.jsonl` keeps the longer scenes
 (up to about 1,450 tokens, evidence up to 27 turns back) for machines with more
 memory. Pass it to `prepare` and to `author_ui --scenes` there.
 
@@ -518,6 +519,7 @@ output directory is refused.
 ## 8. Evaluate
 
 `eval/dev.jsonl` is the practice set. `eval/test.jsonl` is the number you keep.
+Both were written by Claude Sonnet 5.5 and reviewed by the author.
 Each scenario is one conversation in two versions: one earlier fact differs,
 the final player turn is the same, and the right answer changes. A model
 scores a scenario only when both versions are right. Both files in this repo
@@ -693,10 +695,10 @@ contributors; none was tested on its own:
   on, and base already handles facts that are in the prompt: all three
   conditions were 4/4 on evidence at most 4 turns back.
 - **Data mix.** 75% of rows are PIPPA windows, whose character side was
-  written by a Character.AI model, and 25% are synthetic authored scenes.
-  Model-written replies may teach a flatter voice. Your preference for base
-  fits that but does not prove it. Data quality and quantity cannot be told
-  apart here.
+  written by a Character.AI model, and 25% are synthetic scenes written by
+  Claude Sonnet 5.5. Model-written replies may teach a flatter voice. Your
+  preference for base fits that but does not prove it. Data quality and
+  quantity cannot be told apart here.
 - **Noise.** 12 test scenarios and one rater.
 
 A fair test of the idea needs longer sequences and more training than this
@@ -710,13 +712,13 @@ hardware allowed.
   An 80-conversation subset is re-shared as a Hugging Face dataset under that
   license; attribution and changes are in `NOTICE`, and the content checks and
   warning are in `curated/README.md`.
-- **Authored scenes** (`authored/`) are original scenes written for this
-  project. A scan of 7-word runs against all 16,832 conversations in
-  `pippa_deduped.jsonl` found at most three generic phrases shared with any
-  one conversation, and no character names in common.
-- **Eval scenarios** (`eval/`) are synthetic, written by an AI assistant and
-  reviewed by the author. The same scan found one shared 7-word phrase in one
-  conversation.
+- **Authored scenes** (`authored/`) are synthetic scenes written by Claude
+  Sonnet 5.5 for this tutorial. A scan of 7-word runs against all 16,832
+  conversations in `pippa_deduped.jsonl` found at most three generic phrases
+  shared with any one conversation, and no character names in common.
+- **Eval scenarios** (`eval/`) are synthetic, written by Claude Sonnet 5.5
+  and reviewed by the author. The same scan found one shared 7-word phrase
+  in one conversation.
 
 ## 10. Follow-up: SillyTavern retrieval test
 
