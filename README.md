@@ -1,5 +1,15 @@
 # Storythread continuity adapter
 
+**TLDR:** On the 12-scenario test set, base, the recent adapter, and the
+earlier adapter tied: each got both versions of a scenario right 9 times.
+The rater preferred the untuned model's replies. The pilot did not show that
+training on earlier evidence improves continuity. A fair test needs longer
+sequences and more training than this machine allowed. The tables are in
+section 9.
+
+**Tested on:** MacBook Air, Apple M4 (10-core CPU, 4 performance and 6
+efficiency; 8-core GPU), 16 GB unified memory, macOS 27.2.
+
 **Goal:** a hands-on tutorial for local QLoRA fine-tuning on a Mac (Apple
 Silicon, MLX), with roleplay continuity as the backdrop. You curate data, train
 two small adapters, and evaluate them. Follow along with the shipped data, or
@@ -577,7 +587,9 @@ python -m storythread.rate_ui --dir work/eval-dev
 http://127.0.0.1:8769/. One case at a time. Ratings save as you click. The
 page never shows which model wrote a reply; that mapping is in the key
 files, so leave those unread until the sheet is done. The tab counter is
-marks done out of marks required.
+marks done out of marks required. Dev and test use this same page.
+
+![Continuity ratings for one case, evidence underlined.](docs/rate-ui.png)
 
 **Continuity** (first tab). Each case is one version of one scenario. R1, R2,
 and R3 are base and the two adapters, shuffled. Mark each reply on its own
