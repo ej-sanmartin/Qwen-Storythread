@@ -143,7 +143,7 @@ Pick a data path:
   and step 4 rebuilds the pilot datasets exactly:
 
   ```bash
-  hf download HF_USER/storythread-pippa-subset --repo-type dataset --local-dir curated
+  hf download EJTheBae/qwen-storythread-pippa-curated --repo-type dataset --local-dir curated
   ```
 - **B. Curate your own.** Download PIPPA and approve windows yourself, as below.
   Your picks give your own datasets, not the pilot's.

@@ -1,13 +1,16 @@
-# Curated PIPPA subset
+# Qwen Storythread: curated PIPPA subset
 
-The 80 PIPPA conversations used in the pilot, so you can skip
-[step 2](../README.md#2-curate-pippa) and rebuild the exact training data.
+80 PIPPA conversations, with their windows, used in the
+[Qwen Storythread](https://github.com/ej-sanmartin/Qwen-Storythread) tutorial
+on local QLoRA training on a Mac. It is here to get you through the tutorial
+faster: skip [step 2](../README.md#2-curate-pippa) and rebuild the exact
+training data. You are welcome to curate your own subset from PIPPA instead.
 
 The files contain mature content, so they are hosted as a Hugging Face dataset
 marked not-for-all-audiences, not in this Git repository:
 
 ```bash
-hf download HF_USER/storythread-pippa-subset --repo-type dataset --local-dir curated
+hf download EJTheBae/qwen-storythread-pippa-curated --repo-type dataset --local-dir curated
 ```
 
 | File | What it is |
