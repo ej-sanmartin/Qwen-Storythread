@@ -652,15 +652,38 @@ synthetic outputs, and reviewer ratings are scripted.
 | 1,024 and 2,048 probes, peak memory on 16 GB | Needs local Apple Silicon run |
 | `runtime.py train` metrics hook (`train_metrics.json`) during real training | Needs local Apple Silicon run |
 | `eval.py generate` with the 4-bit model and adapters | Needs local Apple Silicon run |
-| Pilot runs, continuity, engagement | Pending, not measured |
+| Pilot runs, continuity, engagement | Measured on the test set (section 11) |
 
-## 11. Results (pending)
+## 11. Results
 
-| Condition | Both versions correct | Engagement wins | Step time (s) | Peak mem (GB) |
+Test set (`eval/test.jsonl`, 12 scenarios), greedy decoding, thinking off.
+Continuity is the share of scenarios where both versions were right. One
+scenario is 8.3 points. Single versions count each version on its own.
+Step time is the mean over 100 updates, and peak memory is from
+`runs/pilot-<arm>/train_metrics.json`.
+
+| Condition | Both versions | Single versions | Step time (s) | Peak mem (GB) |
 |---|---|---|---|---|
-| base | pending | pending | n/a | n/a |
-| recent adapter | pending | pending | pending | pending |
-| earlier adapter | pending | pending | pending | pending |
+| base | 9/12 (75%) | 19/24 (79%) | n/a | n/a |
+| recent adapter | 9/12 (75%) | 20/24 (83%) | 5.61 | 10.89 |
+| earlier adapter | 9/12 (75%) | 21/24 (88%) | 5.77 | 10.88 |
+
+Both versions by evidence distance (4 scenarios in each bucket):
+
+| Condition | ≤4 turns | 5–12 | >12 |
+|---|---|---|---|
+| base | 4/4 | 2/4 | 3/4 |
+| recent adapter | 4/4 | 3/4 | 2/4 |
+| earlier adapter | 4/4 | 2/4 | 3/4 |
+
+Engagement is pairwise over 24 cases (both versions of each scenario): which
+character you would rather keep chatting with.
+
+| Pair | First | Second | Tie |
+|---|---|---|---|
+| base vs earlier | base 18 | earlier 2 | 4 |
+| base vs recent | base 14 | recent 9 | 1 |
+| recent vs earlier | recent 7 | earlier 14 | 3 |
 
 ## 12. Follow-up: SillyTavern retrieval test
 

@@ -25,6 +25,15 @@
   button.on { background: var(--accent); color: var(--on-accent); }
   button.yes.on { background: var(--good); border-color: var(--good); color: #fff; }
   button.no.on { background: var(--bad); border-color: var(--bad); color: #fff; }
+  .btns button:hover:not(:disabled):not(.on) {
+    background: var(--surface); border-color: var(--text);
+  }
+  .btns button.yes:hover:not(:disabled):not(.on) {
+    border-color: var(--good); color: var(--good);
+  }
+  .btns button.no:hover:not(:disabled):not(.on) {
+    border-color: var(--bad); color: var(--bad);
+  }
   .top {
     display: flex; justify-content: space-between; align-items: center;
     gap: 1rem; padding: 0.6rem 0.9rem; border-bottom: 1px solid var(--line);

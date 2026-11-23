@@ -128,8 +128,11 @@ function replyView(row, reply) {
 
 // Returns the A / B / tie controls for one engagement case.
 function pairView(row) {
-  const choose = (value) => save(row, {
-    winner: row.winner === value ? "" : value});
+  // Set the winner first so the clicked button is highlighted on redraw.
+  const choose = (value) => {
+    row.winner = row.winner === value ? "" : value;
+    save(row, {winner: row.winner});
+  };
   const reply = (side) => el("div", {class: "reply"}, el("h3", {text: side}),
     el("p", {text: row[side]}));
   const pick = (value, text) => el("button", {
