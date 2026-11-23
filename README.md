@@ -592,25 +592,9 @@ python -m storythread.eval report eval/test.jsonl
 writes `work/eval/report.json`, which is the result in section 9. This run
 locks `eval/test.jsonl` in the author page.
 
-### The same work, one command at a time
-
-`run`, `rate_ui`, and `report` wrap these. Swap in `eval/dev.jsonl` and
-`work/eval-dev` for the practice pass.
-
-```bash
-mkdir -p work/eval
-python -m storythread.eval generate --label base eval/test.jsonl work/eval/base.jsonl
-python -m storythread.eval generate --label recent --adapter runs/pilot-recent \
-  eval/test.jsonl work/eval/recent.jsonl
-python -m storythread.eval sheet eval/test.jsonl work/eval/sheet.jsonl work/eval/key.jsonl \
-  --outputs work/eval/base.jsonl work/eval/recent.jsonl
-# In sheet.jsonl set "satisfies" to true or false on every reply.
-python -m storythread.eval continuity eval/test.jsonl work/eval/sheet.jsonl work/eval/key.jsonl
-python -m storythread.eval blind eval/test.jsonl work/eval/base.jsonl work/eval/recent.jsonl \
-  work/eval/blind-base-recent.jsonl work/eval/blind-base-recent-key.jsonl
-# Set "winner" to A, B, or tie.
-python -m storythread.eval score work/eval/blind-base-recent.jsonl work/eval/blind-base-recent-key.jsonl
-```
+`run`, `rate_ui`, and `report` wrap smaller subcommands (`generate`, `sheet`,
+`blind`, `continuity`, `score`). They still work on their own; see
+`python -m storythread.eval --help`.
 
 ## 9. Results
 
@@ -642,6 +626,48 @@ character you would rather keep chatting with.
 | base vs earlier | base 18 | earlier 2 | 4 |
 | base vs recent | base 14 | recent 9 | 1 |
 | recent vs earlier | recent 7 | earlier 14 | 3 |
+
+### What this result does and does not show
+
+The pilot did not show that either arm improves continuity. Base, recent, and
+earlier tied, and you preferred the base model's replies. These are likely
+contributors; none was tested on its own:
+
+- **Small training signal.** Each arm trained on 96 rows: 72 PIPPA windows
+  shared by both arms and 24 authored scenes, which are the only difference.
+  100 updates at batch size 1 is about one pass, with rank-8 LoRA on 4 blocks.
+- **Small contrast.** Evidence sat 2 to 4 turns back (median about 95 tokens)
+  in the recent arm and 4 to 9 turns back (median 7 turns, about 250 tokens)
+  in the earlier arm.
+- **The 512-token cap.** Memory on a 16 GB Mac set it, and 1,024 and 2,048
+  were not probed. Training rows and every test prompt (longest 411 tokens)
+  fit inside it. The eval never asked a model to hold a fact across a longer
+  context than it was trained on, and base already handles facts that are in
+  the prompt: all three conditions were 4/4 on evidence at most 4 turns back.
+- **Data mix.** 75% of rows are PIPPA windows, whose character side was
+  written by a Character.AI model, and 25% are synthetic authored scenes.
+  Model-written replies may teach a flatter voice. Your preference for base
+  fits that but does not prove it. Data quality and quantity cannot be told
+  apart here.
+- **Noise.** 12 test scenarios and one rater. On dev, earlier looked ahead;
+  on test it did not.
+
+A fair test of the idea needs longer sequences and more training than this
+hardware allowed.
+
+### Data provenance
+
+- **PIPPA** (Gosling, Dale, Zheng) is listed as Apache-2.0 on its dataset
+  card. The card says the logs were contributed with consent to redistribute
+  and personal information was redacted. It is marked not-for-all-audiences.
+  Re-sharing a subset needs the license, attribution, and a review of the rows.
+- **Authored scenes** (`authored/`) are original scenes written for this
+  project. A scan of 7-word runs against all 16,832 conversations in
+  `pippa_deduped.jsonl` found at most three generic phrases shared with any
+  one conversation, and no character names in common.
+- **Eval scenarios** (`eval/`) are synthetic, written by an AI assistant and
+  reviewed by the author. The same scan found one shared 7-word phrase in one
+  conversation.
 
 ## 10. Follow-up: SillyTavern retrieval test
 
