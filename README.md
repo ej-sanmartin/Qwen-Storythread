@@ -476,77 +476,126 @@ output directory is refused.
 
 ## 8. Evaluate
 
-Author held-out scenarios in `eval/dev.jsonl` and `eval/test.jsonl` with
-original characters and histories. Keep the test set frozen: tune on dev only.
-Each scenario has two versions where one earlier event differs, the final user
-prompt is identical, and the expected reply changes.
+`eval/dev.jsonl` is the practice set. `eval/test.jsonl` is the number you keep.
+Each scenario is one conversation in two versions: one earlier fact differs,
+the final player turn is the same, and the right answer changes. A model
+scores a scenario only when both versions are right. Both files in this repo
+are already written, so start at "Check the files" unless you are changing them.
 
-### Author the eval scenarios
+### Read or edit the scenarios
 
-The same editor as step 3 writes them. `--kind eval` switches it to eval
-scenarios and defaults to `eval/dev.jsonl`:
+The step 3 editor writes these too. One process serves one file, and the
+header shows which. Open dev and test in two terminals:
 
 ```bash
-python -m storythread.author_ui --kind eval                            # eval/dev.jsonl
-python -m storythread.author_ui --kind eval --scenes eval/test.jsonl   # eval/test.jsonl
+python -m storythread.author_ui --kind eval
+python -m storythread.author_ui --kind eval --scenes eval/test.jsonl --port 8767
 ```
 
-Open http://127.0.0.1:8766/. The header shows which file you are editing. You
-write the shared history once, mark one turn as the evidence turn, and type
-its two variants (A and B) with a quote from each. Then write the final player
-turn and what a correct reply does in each version. The page builds both
-`messages` lists itself and stores them in the schema in step 9. Saving checks
-the same rules as `eval validate`, and a scenario that reuses a group or card
-from the sibling file (`dev.jsonl` and `test.jsonl` check each other) is
-refused. Once `eval run` has generated against a file, the editor refuses
-further edits until those outputs are deleted: it matches the file's bytes
-to `cases_sha` in `--eval-dir` (default `work/eval`). A turn that differs
-between versions and is not the evidence turn is shown as two texts, and
-Save stays blocked until you make that turn the evidence turn or make the
-texts match.
+Dev is at http://127.0.0.1:8766/ and test at http://127.0.0.1:8767/. Stop
+either server with Ctrl-C. This page does not load Qwen.
 
-### Run it
+Click a scenario to read it. Version A and version B are both part of it.
+Clicking a box opens that version in the sidebar. You are not choosing one
+to keep.
+
+To add a scenario, write the shared history, mark one turn as the evidence
+turn, and give that turn two texts with a quote from each. Then write the
+final player turn and what a correct reply does in each version. The page
+builds both `messages` lists (see Schemas and outputs). Saving checks the
+same rules as `eval validate`, and refuses a group or character card that
+the other file already uses. A turn that differs between versions and is
+not the evidence turn blocks Save until you mark it as the evidence turn or
+make the two texts match.
+
+Once `eval run` has generated against a file, the editor locks it until
+those outputs are deleted. It matches the file bytes to `cases_sha` in
+`--eval-dir` (default `work/eval`). Dev outputs in `work/eval-dev` do not
+lock dev unless you pass that directory as `--eval-dir`.
+
+### Check the files
 
 ```bash
-python -m storythread.eval validate eval/dev.jsonl eval/test.jsonl   # schema + dev/test disjoint
+python -m storythread.eval validate eval/dev.jsonl eval/test.jsonl
+```
+
+Checks the schema, and that dev and test share no group, character card, or
+scenario id.
+
+### Generate and rate dev
+
+Practice pass. Its own output directory keeps it from colliding with test.
+
+```bash
+python -m storythread.eval run eval/dev.jsonl \
+  --adapter recent=runs/pilot-recent --adapter earlier=runs/pilot-earlier \
+  --dir work/eval-dev
+```
+
+Loads Qwen three times (base, then each adapter). Greedy decoding, thinking
+off, up to `--max-tokens` 160. Writes one reply per version per condition,
+then the rating sheets under `work/eval-dev`. The terminal prints a line
+when a condition starts and stays quiet while that condition generates. A
+finished condition is skipped if you stop and run the command again. A
+half-written file is `base.jsonl.part` (then `recent`, then `earlier`) and
+is discarded on the next run. A sheet that already exists is never replaced,
+because it holds your ratings. Adding an adapter later needs the old sheets
+deleted first, and `run` says so.
+
+```bash
+python -m storythread.rate_ui --dir work/eval-dev
+```
+
+http://127.0.0.1:8769/. One case at a time. Ratings save as you click. The
+page never shows which model wrote a reply; that mapping is in the key
+files, so leave those unread until the sheet is done. The tab counter is
+marks done out of marks required.
+
+**Continuity** (first tab). Each case is one version of one scenario. R1, R2,
+and R3 are base and the two adapters, shuffled. Mark each reply on its own
+against Expected. The underlined sentence is the evidence.
+
+- **Satisfies expected:** the reply acts on the right fact. A paraphrase counts.
+- **Does not:** it uses the other version's fact, invents one, or never answers.
+
+All three can pass, and all three can fail. A lively reply still fails when
+the fact is wrong. Clicking the selected button again clears it. A case is
+done when all three replies have a mark.
+
+**Engagement** (the other tabs: base vs recent, base vs earlier, recent vs
+earlier). The same story and final turn, with two replies labeled A and B.
+The question is "Which character would you rather keep chatting with?" Pick
+A, B, or Tie. Tie is a real score, including when the replies match. A right
+or wrong fact decides a pick only when it would make you stop reading.
+
+```bash
+python -m storythread.eval report eval/dev.jsonl --dir work/eval-dev
+```
+
+Scores a sheet only when every item on it is rated, and otherwise prints
+`n of m rated`. Writes `work/eval-dev/report.json`. This is the practice
+pass, not the result.
+
+### Generate and rate test
+
+Run this once the marking rule feels settled. Stop the dev rating server
+first: both want port 8769.
+
+```bash
 python -m storythread.eval run eval/test.jsonl \
   --adapter recent=runs/pilot-recent --adapter earlier=runs/pilot-earlier
-python -m storythread.rate_ui                                        # rate in the browser
+python -m storythread.rate_ui
 python -m storythread.eval report eval/test.jsonl
 ```
 
-`run` generates `base` plus one condition per `--adapter LABEL=PATH` (greedy
-decoding, thinking off, same `--max-tokens`, same prompts, checked by prompt
-hash), then
-builds every rating sheet under `--dir work/eval`. Output rows record the
-case-file hash so the frozen test set is verifiable. It is safe to run again:
-finished conditions are skipped, and a sheet that already exists is never
-replaced, since it holds your ratings. Adding an adapter later needs the old
-sheets deleted first, and `run` says so.
+`run` writes to `work/eval`. Rate test the same way you rated dev. `report`
+writes `work/eval/report.json`, which is the result in section 9. This run
+locks `eval/test.jsonl` in the author page.
 
-`rate_ui` (http://127.0.0.1:8769/, `--dir`, `--port`) shows one case at a time
-with the story, the evidence, and the expected behavior. Ratings save as you
-click. It reads only the blinded sheets; the key files stay on disk. Tabs show
-progress per sheet.
+### The same work, one command at a time
 
-`report` scores every sheet that is fully rated, shows `n of m rated` for the
-rest, prints the result, and writes `work/eval/report.json`.
-
-**Primary metric: continuity.** Percent of scenarios where the model acts on the
-correct story state in both versions. On the continuity tab, mark each reply
-true or false against `expected` and `evidence`; in-character paraphrases
-count. Replies are shuffled per case and labeled `R1..R3`. The report gives,
-per condition, counts with denominators for both versions satisfied, for
-single versions, and for each evidence-distance bucket (`--edges 4,12` turns
-by default).
-
-**Separate score: engagement.** Blind pairwise for every pair of conditions,
-question: "Which character would you rather keep chatting with?" Pick A, B, or
-tie on each pair's tab. The report counts wins per condition.
-
-### Individual commands
-
-`run`, `rate_ui`, and `report` wrap these, which still work on their own:
+`run`, `rate_ui`, and `report` wrap these. Swap in `eval/dev.jsonl` and
+`work/eval-dev` for the practice pass.
 
 ```bash
 mkdir -p work/eval
@@ -555,15 +604,53 @@ python -m storythread.eval generate --label recent --adapter runs/pilot-recent \
   eval/test.jsonl work/eval/recent.jsonl
 python -m storythread.eval sheet eval/test.jsonl work/eval/sheet.jsonl work/eval/key.jsonl \
   --outputs work/eval/base.jsonl work/eval/recent.jsonl
-# Reviewer: in sheet.jsonl set "satisfies": true/false on every reply.
+# In sheet.jsonl set "satisfies" to true or false on every reply.
 python -m storythread.eval continuity eval/test.jsonl work/eval/sheet.jsonl work/eval/key.jsonl
 python -m storythread.eval blind eval/test.jsonl work/eval/base.jsonl work/eval/recent.jsonl \
   work/eval/blind-base-recent.jsonl work/eval/blind-base-recent-key.jsonl
-# Reviewer: set "winner" to A, B, or tie.
+# Set "winner" to A, B, or tie.
 python -m storythread.eval score work/eval/blind-base-recent.jsonl work/eval/blind-base-recent-key.jsonl
 ```
 
-## 9. Schemas and outputs
+## 9. Results
+
+Test set (`eval/test.jsonl`, 12 scenarios), greedy decoding, thinking off.
+Continuity is the share of scenarios where both versions were right. One
+scenario is 8.3 points. Single versions count each version on its own.
+Step time is the mean over 100 updates, and peak memory is from
+`runs/pilot-<arm>/train_metrics.json`.
+
+| Condition | Both versions | Single versions | Step time (s) | Peak mem (GB) |
+|---|---|---|---|---|
+| base | 9/12 (75%) | 19/24 (79%) | n/a | n/a |
+| recent adapter | 9/12 (75%) | 20/24 (83%) | 5.61 | 10.89 |
+| earlier adapter | 9/12 (75%) | 21/24 (88%) | 5.77 | 10.88 |
+
+Both versions by evidence distance (4 scenarios in each bucket):
+
+| Condition | ≤4 turns | 5–12 | >12 |
+|---|---|---|---|
+| base | 4/4 | 2/4 | 3/4 |
+| recent adapter | 4/4 | 3/4 | 2/4 |
+| earlier adapter | 4/4 | 2/4 | 3/4 |
+
+Engagement is pairwise over 24 cases (both versions of each scenario): which
+character you would rather keep chatting with.
+
+| Pair | First | Second | Tie |
+|---|---|---|---|
+| base vs earlier | base 18 | earlier 2 | 4 |
+| base vs recent | base 14 | recent 9 | 1 |
+| recent vs earlier | recent 7 | earlier 14 | 3 |
+
+## 10. Follow-up: SillyTavern retrieval test
+
+Not part of the main evaluation. After the above, load the same characters and
+histories in SillyTavern with its memory/vector retrieval enabled (no evidence
+in the prompt window), and run the same scenarios on base and each adapter.
+Record the retrieval settings, and score with the same continuity sheet.
+
+## Schemas and outputs
 
 All files are JSONL.
 
@@ -624,7 +711,10 @@ same turn, differ there, and share the system card and final user prompt.
 `work/`, `runs/`, `models/`, downloaded PIPPA files, `private/`, and
 `transcripts/` are ignored by Git.
 
-## 10. Fixture and verification
+## Fixture and verification
+
+Not a step in the experiment. Run it when you change the code. It uses
+`fixtures/` and does not read the pilot ratings.
 
 `fixtures/` is a synthetic, original dataset: PIPPA-shaped sample, review file,
 four authored scenes, and separate dev and test eval sets. Run it:
@@ -651,46 +741,8 @@ synthetic outputs, and reviewer ratings are scripted.
 | 512-token smoke run (`runtime.py train -- --config smoke.yaml`) | Needs local Apple Silicon run |
 | 1,024 and 2,048 probes, peak memory on 16 GB | Needs local Apple Silicon run |
 | `runtime.py train` metrics hook (`train_metrics.json`) during real training | Needs local Apple Silicon run |
-| `eval.py generate` with the 4-bit model and adapters | Needs local Apple Silicon run |
-| Pilot runs, continuity, engagement | Measured on the test set (section 11) |
-
-## 11. Results
-
-Test set (`eval/test.jsonl`, 12 scenarios), greedy decoding, thinking off.
-Continuity is the share of scenarios where both versions were right. One
-scenario is 8.3 points. Single versions count each version on its own.
-Step time is the mean over 100 updates, and peak memory is from
-`runs/pilot-<arm>/train_metrics.json`.
-
-| Condition | Both versions | Single versions | Step time (s) | Peak mem (GB) |
-|---|---|---|---|---|
-| base | 9/12 (75%) | 19/24 (79%) | n/a | n/a |
-| recent adapter | 9/12 (75%) | 20/24 (83%) | 5.61 | 10.89 |
-| earlier adapter | 9/12 (75%) | 21/24 (88%) | 5.77 | 10.88 |
-
-Both versions by evidence distance (4 scenarios in each bucket):
-
-| Condition | ≤4 turns | 5–12 | >12 |
-|---|---|---|---|
-| base | 4/4 | 2/4 | 3/4 |
-| recent adapter | 4/4 | 3/4 | 2/4 |
-| earlier adapter | 4/4 | 2/4 | 3/4 |
-
-Engagement is pairwise over 24 cases (both versions of each scenario): which
-character you would rather keep chatting with.
-
-| Pair | First | Second | Tie |
-|---|---|---|---|
-| base vs earlier | base 18 | earlier 2 | 4 |
-| base vs recent | base 14 | recent 9 | 1 |
-| recent vs earlier | recent 7 | earlier 14 | 3 |
-
-## 12. Follow-up: SillyTavern retrieval test
-
-Not part of the main evaluation. After the above, load the same characters and
-histories in SillyTavern with its memory/vector retrieval enabled (no evidence
-in the prompt window), and run the same scenarios on base and each adapter.
-Record the retrieval settings, and score with the same continuity sheet.
+| `eval.py generate` with the 4-bit model and adapters | Verified during the pilot eval (section 8) |
+| Pilot runs, continuity, engagement | Measured on the test set (section 9) |
 
 ## Credits
 
