@@ -380,7 +380,10 @@ python -m storythread.runtime train -- --config smoke.yaml
 `runtime.py train` runs `mlx_lm.lora` unchanged and also writes
 `<adapter_path>/train_metrics.json` (mean and max step time, peak memory in GB).
 
-Probe real long examples at each candidate cap. Close other apps first:
+On this 16 GB Mac, 512 is the only cap that fits. `pilot.yaml` already sets
+it. Use 512 in step 7.
+
+1,024 and 2,048 can be tried on a stronger machine. Close other apps first:
 
 ```bash
 for CAP in 1024 2048; do
@@ -395,9 +398,9 @@ done
 `probe` picks the longest training examples that fit under the target and
 refuses if none reach 60% of it (author a longer scene instead).
 
-Choose **one cap** for both arms: the largest of 512, 1024, 2048 whose probe
-finishes with comfortable memory headroom, and for which `check-data` reports
-zero flagged rows in both arms at that cap.
+On that machine, choose **one cap** for both arms: the largest of 512, 1024,
+2048 whose probe finishes with comfortable memory headroom, and for which
+`check-data` reports zero flagged rows in both arms at that cap.
 
 ## 7. Pilot runs
 
@@ -405,7 +408,7 @@ Identical settings except the data and output directory (`pilot.yaml`: seed 42,
 LoRA rank 8, 4 adapted blocks, learning rate 1e-4, 100 updates):
 
 ```bash
-CAP=1024   # the verified cap from step 6
+CAP=512    # this 16 GB Mac; try 1024 or 2048 on a stronger machine
 for ARM in recent earlier; do
   python -m storythread.runtime check-data --data work/datasets/$ARM --max-tokens $CAP
   python -m storythread.runtime train -- --config pilot.yaml --data work/datasets/$ARM \
@@ -643,9 +646,10 @@ Continuity is the share of scenarios where both versions were right. One
 scenario is 8.3 points. Single versions count each version on its own.
 Step time is the mean over 100 updates, and peak memory is from
 `runs/pilot-<arm>/train_metrics.json`. The generations, ratings, keys, and
-reports behind every number are in `results/pilot/`. They were scored before
-the eval files gained a `canary` key; the cases are unchanged, but the file hash
-differs (`eval run` will treat these results as stale for the new file).
+reports behind every number are in `results/pilot/`. Do not point `eval run`
+at that directory. The sheets were scored before each eval row gained a
+`canary` key. The cases are the same, but the file hash differs, so a new
+`eval run` treats these results as stale.
 
 | Condition | Both versions | Single versions | Step time (s) | Peak mem (GB) |
 |---|---|---|---|---|
@@ -682,18 +686,18 @@ contributors; none was tested on its own:
 - **Small contrast.** Evidence sat 2 to 4 turns back (median about 95 tokens)
   in the recent arm and 4 to 9 turns back (median 7 turns, about 250 tokens)
   in the earlier arm.
-- **The 512-token cap.** Memory on a 16 GB Mac set it, and 1,024 and 2,048
-  were not probed. Training rows and every test prompt (longest 411 tokens)
-  fit inside it. The eval never asked a model to hold a fact across a longer
-  context than it was trained on, and base already handles facts that are in
-  the prompt: all three conditions were 4/4 on evidence at most 4 turns back.
+- **The 512-token cap.** On this 16 GB Mac only 512 fits. 1,024 and 2,048
+  were not probed here; try them on a stronger machine. Training rows and
+  every test prompt (longest 411 tokens) fit inside 512. The eval never
+  asked a model to hold a fact across a longer context than it was trained
+  on, and base already handles facts that are in the prompt: all three
+  conditions were 4/4 on evidence at most 4 turns back.
 - **Data mix.** 75% of rows are PIPPA windows, whose character side was
   written by a Character.AI model, and 25% are synthetic authored scenes.
   Model-written replies may teach a flatter voice. Your preference for base
   fits that but does not prove it. Data quality and quantity cannot be told
   apart here.
-- **Noise.** 12 test scenarios and one rater. On dev, earlier looked ahead;
-  on test it did not.
+- **Noise.** 12 test scenarios and one rater.
 
 A fair test of the idea needs longer sequences and more training than this
 hardware allowed.
@@ -816,7 +820,7 @@ synthetic outputs, and reviewer ratings are scripted.
 | Eval validation, blind sheet, continuity scoring with distance buckets, engagement scoring | Verified on fixture |
 | Eval authoring mode, `eval run`/`eval report`, rating page (generation replaced by synthetic outputs) | Verified on fixture |
 | 512-token smoke run (`runtime.py train -- --config smoke.yaml`) | Needs local Apple Silicon run |
-| 1,024 and 2,048 probes, peak memory on 16 GB | Needs local Apple Silicon run |
+| 1,024 and 2,048 probes | For a stronger machine; this 16 GB Mac stays at 512 |
 | `runtime.py train` metrics hook (`train_metrics.json`) during real training | Needs local Apple Silicon run |
 | `eval.py generate` with the 4-bit model and adapters | Verified during the pilot eval (section 8) |
 | Pilot runs, continuity, engagement | Measured on the test set (section 9) |
