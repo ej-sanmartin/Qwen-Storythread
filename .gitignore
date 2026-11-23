@@ -6,6 +6,8 @@ models/
 runs/
 pippa.jsonl
 pippa_*.jsonl
+# Curated PIPPA subset: mature content, hosted on Hugging Face instead.
+curated/*.jsonl
 *.safetensors
 *.gguf
 *.npz

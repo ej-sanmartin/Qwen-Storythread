@@ -39,34 +39,42 @@ def clean(value):
     return value.replace("\r\n", "\n").strip()
 
 
-def records(path):
-    """Yields (scene_id, default group, scene) for each usable PIPPA row.
+def scene_of(row):
+    """Returns (scene_id, default group, scene) for one PIPPA row, or None.
 
-    The default group is the PIPPA bot_id, or the normalized bot name if absent.
+    None means the row has fewer than three usable turns. The default group
+    is the PIPPA bot_id, or the normalized bot name if absent.
     """
-    for row in rows(path):
-        turns = []
-        for turn in row.get("conversation", []):
-            speech = clean(turn.get("message"))
-            human = turn.get("is_human")
-            if not speech or type(human) is not bool:
-                continue
-            role = "user" if human else "assistant"
-            if turns and turns[-1]["role"] == role:
-                turns[-1]["content"] += "\n\n" + speech
-            else:
-                turns.append({"role": role, "content": speech})
-        if len(turns) < 3:
+    turns = []
+    for turn in row.get("conversation", []):
+        speech = clean(turn.get("message"))
+        human = turn.get("is_human")
+        if not speech or type(human) is not bool:
             continue
-        name = clean(row.get("bot_name"))
-        description = clean(row.get("bot_description"))
-        greeting = clean(row.get("bot_greeting"))
-        if greeting and turns[0]["role"] == "user":
-            turns.insert(0, {"role": "assistant", "content": greeting})
-        bot_id = clean(row.get("bot_id"))
-        group = bot_id or " ".join(re.findall(r"\w+", name.casefold()))
-        scene = {"name": name, "description": description, "turns": turns}
-        yield fingerprint(scene), group, {**scene, "bot_id": bot_id}
+        role = "user" if human else "assistant"
+        if turns and turns[-1]["role"] == role:
+            turns[-1]["content"] += "\n\n" + speech
+        else:
+            turns.append({"role": role, "content": speech})
+    if len(turns) < 3:
+        return None
+    name = clean(row.get("bot_name"))
+    description = clean(row.get("bot_description"))
+    greeting = clean(row.get("bot_greeting"))
+    if greeting and turns[0]["role"] == "user":
+        turns.insert(0, {"role": "assistant", "content": greeting})
+    bot_id = clean(row.get("bot_id"))
+    group = bot_id or " ".join(re.findall(r"\w+", name.casefold()))
+    scene = {"name": name, "description": description, "turns": turns}
+    return fingerprint(scene), group, {**scene, "bot_id": bot_id}
+
+
+def records(path):
+    """Yields (scene_id, default group, scene) for each usable PIPPA row."""
+    for row in rows(path):
+        found = scene_of(row)
+        if found:
+            yield found
 
 
 def index(args):

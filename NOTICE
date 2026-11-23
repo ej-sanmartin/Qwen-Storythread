@@ -1,0 +1,33 @@
+Storythread
+Copyright 2026 The Storythread authors
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+Third-party material
+--------------------
+
+The curated subset (curated/pippa-subset.jsonl and curated/review.jsonl,
+published as a Hugging Face dataset, not in this repository) contains
+conversations from PIPPA, the Personal
+Interaction Pairs between People and AI dataset (Gosling, Dale, Zheng;
+PygmalionAI), https://huggingface.co/datasets/PygmalionAI/PIPPA, which its
+dataset card lists under the Apache License, Version 2.0. Citation:
+
+  Gosling, Dale, Zheng. "PIPPA: A Partially Synthetic Conversational
+  Dataset." 2023. https://arxiv.org/abs/2308.05884
+
+Changes made to the PIPPA material:
+  - 80 conversations were selected from pippa_deduped.jsonl by hand.
+  - Each row was cut to bot_id, bot_name, bot_greeting, bot_description, and
+    conversation. All other fields were dropped. The conversation text is
+    not edited.
+  - curated/review.jsonl records which turns of each conversation were used
+    (start and end) and any edit made to the character card (system).
+
+The conversations are user-written fiction between people and chatbots and
+include mature themes. See curated/README.md.
+
+Everything else (authored/, eval/, fixtures/, results/, and the code) is
+original to this project. The scenarios in authored/ and eval/ are synthetic.
+The base model (Qwen3.5-4B, MLX 4-bit) and trained adapters are not
+distributed here and keep their own licenses.

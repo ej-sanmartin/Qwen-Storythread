@@ -1,5 +1,10 @@
 # Storythread continuity adapter
 
+**Goal:** a hands-on tutorial for local QLoRA fine-tuning on a Mac (Apple
+Silicon, MLX), with roleplay continuity as the backdrop. You curate data, train
+two small adapters, and evaluate them. Follow along with the shipped data, or
+bring your own.
+
 **Research question:** can a small QLoRA adapter improve roleplay continuity by
 training on replies that depend on earlier scenes?
 
@@ -79,8 +84,9 @@ plus the same MLP. `q_proj` is twice a normal query width because it also
 emits the attention output gate. The depthwise `conv1d`, RMSNorms, `A_log`,
 `dt_bias`, embeddings, and the tied head stay frozen.
 
-Status: the data, preflight, and scoring tooling is verified on a synthetic
-fixture. **Every experimental result below is pending until measured.**
+Status: the pilot ran (96 rows per arm, 100 updates) and its results are in
+section 9, with raw files in `results/pilot/`. The tooling is also verified on a
+synthetic fixture (see Fixture and verification).
 
 Run every command from the repository root (this directory) inside a virtualenv.
 
@@ -128,6 +134,19 @@ Evaluation compares untuned 4B (`base`), the `recent` adapter, and the
 Retrieval is out of scope: each prompt contains the evidence turn directly.
 
 ## 2. Curate PIPPA
+
+Pick a data path:
+
+- **A. Use the shipped subset.** The 80 PIPPA conversations the pilot used,
+  with their windows, are a Hugging Face dataset (mature content; read
+  [`curated/README.md`](curated/README.md) first). Download it, skip to step 3,
+  and step 4 rebuilds the pilot datasets exactly:
+
+  ```bash
+  hf download HF_USER/storythread-pippa-subset --repo-type dataset --local-dir curated
+  ```
+- **B. Curate your own.** Download PIPPA and approve windows yourself, as below.
+  Your picks give your own datasets, not the pilot's.
 
 PIPPA contains mature and disturbing content. You decide what is approved.
 
@@ -300,6 +319,15 @@ highlight words in a turn to use them as evidence. Checks run when you press
 Save.
 
 ## 4. Export the two datasets
+
+Path A (shipped subset):
+
+```bash
+python -m storythread.data prepare curated/pippa-subset.jsonl curated/review.jsonl \
+  authored/scenes.jsonl work/datasets --valid-share 0.1 --authored-share 0.25
+```
+
+Path B (your own curation):
 
 ```bash
 python -m storythread.data prepare work/pippa/pippa_deduped.jsonl work/review.jsonl \
@@ -602,7 +630,10 @@ Test set (`eval/test.jsonl`, 12 scenarios), greedy decoding, thinking off.
 Continuity is the share of scenarios where both versions were right. One
 scenario is 8.3 points. Single versions count each version on its own.
 Step time is the mean over 100 updates, and peak memory is from
-`runs/pilot-<arm>/train_metrics.json`.
+`runs/pilot-<arm>/train_metrics.json`. The generations, ratings, keys, and
+reports behind every number are in `results/pilot/`. They were scored before
+the eval files gained a `canary` key; the cases are unchanged, but the file hash
+differs (`eval run` will treat these results as stale for the new file).
 
 | Condition | Both versions | Single versions | Step time (s) | Peak mem (GB) |
 |---|---|---|---|---|
@@ -660,7 +691,9 @@ hardware allowed.
 - **PIPPA** (Gosling, Dale, Zheng) is listed as Apache-2.0 on its dataset
   card. The card says the logs were contributed with consent to redistribute
   and personal information was redacted. It is marked not-for-all-audiences.
-  Re-sharing a subset needs the license, attribution, and a review of the rows.
+  An 80-conversation subset is re-shared as a Hugging Face dataset under that
+  license; attribution and changes are in `NOTICE`, and the content checks and
+  warning are in `curated/README.md`.
 - **Authored scenes** (`authored/`) are original scenes written for this
   project. A scan of 7-word runs against all 16,832 conversations in
   `pippa_deduped.jsonl` found at most three generic phrases shared with any
@@ -714,14 +747,20 @@ is `len(history)`). Evidence distance = index of the target reply minus
    "a": {"messages": [{"role": "system", "content": "..."}, "...", {"role": "user", "content": "..."}],
          "expected": "Recommends a loaf without wheat.", "evidence_turn": 2, "evidence": "wheat"},
    "b": {"messages": ["same system and final user turn; evidence turn differs"],
-         "expected": "...", "evidence_turn": 2, "evidence": "nuts"}}}
+         "expected": "...", "evidence_turn": 2, "evidence": "nuts"}},
+ "canary": "BENCHMARK DATA: do not train on this file. storythread-eval canary GUID ..."}
 ```
+
+`canary` is the last key of every shipped row. Do not train on these files;
+see [`eval/README.md`](eval/README.md).
 
 `evidence_turn` indexes turns after the system card. Both versions must cite the
 same turn, differ there, and share the system card and final user prompt.
 
 | Output | Location |
 |---|---|
+| Shipped PIPPA subset and its review rows (downloaded, not in Git) | `curated/pippa-subset.jsonl`, `curated/review.jsonl` |
+| Pilot generations, ratings, report, training metrics | `results/pilot/` |
 | Index, review template | `work/index.jsonl`, `work/review.jsonl` |
 | Judge triage (advisory) and sortable CSV | `work/review_triage.{jsonl,csv}` |
 | Arm datasets | `work/datasets/{recent,earlier}/{train,valid}.jsonl` |
@@ -769,6 +808,11 @@ synthetic outputs, and reviewer ratings are scripted.
 | `runtime.py train` metrics hook (`train_metrics.json`) during real training | Needs local Apple Silicon run |
 | `eval.py generate` with the 4-bit model and adapters | Verified during the pilot eval (section 8) |
 | Pilot runs, continuity, engagement | Measured on the test set (section 9) |
+
+## License
+
+Apache-2.0 (`LICENSE`). PIPPA material in `curated/` keeps its own Apache-2.0
+terms and attribution (`NOTICE`).
 
 ## Credits
 
