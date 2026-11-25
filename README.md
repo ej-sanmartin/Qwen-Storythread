@@ -1,5 +1,7 @@
 # Storythread continuity adapter
 
+**Blog:** [Teaching a Small Language Model to Remember][blog]
+
 **TLDR:** On the 12-scenario test set, base, the recent adapter, and the
 earlier adapter tied: each got both versions of a scenario right 9 times.
 The rater preferred the untuned model's replies. The pilot did not show that
@@ -844,3 +846,5 @@ terms and attribution (`NOTICE`).
   Zheng) supplies the curated roleplay core.
 - The recent-versus-earlier training comparison is Storythread's own experiment,
   separate from REMP.
+
+[blog]: https://esanmartin.com/blog/teaching-a-small-language-model-to-remember/
